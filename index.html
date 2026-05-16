@@ -1,0 +1,1025 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>SpeedGuard</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=Space+Grotesk:wght@300;400;500;600;700&family=Syne+Mono&display=swap');
+
+/* ─────────────────────────────────────────────────────
+   10.25" automotive display — 21:9 (1920×820 / 2400×1080)
+   Base font-size anchored to viewport width so everything
+   scales proportionally regardless of actual pixel density.
+───────────────────────────────────────────────────── */
+:root {
+  --bg:    #07080b;
+  --bg2:   #0d0f14;
+  --bg3:   #12151d;
+  --line:  rgba(255,255,255,0.07);
+  --text:  #f0f2f7;
+  --muted: rgba(240,242,247,0.85);
+  --muted2:rgba(240,242,247,0.62);
+  --ok:    #3de8a0;
+  --warn:  #f5c842;
+  --danger:#ff3d5a;
+  --accent:#4f8eff;
+
+  /* All sizing derived from vw so it auto-fits any 21:9 screen */
+  --col-w:  20vw;   /* side panel width  ~384px on 1920px wide  */
+  --hbar-h: 4.2vh;  /* top bar height                           */
+  --cbar-h: 3.5vh;  /* bottom coords bar                        */
+  --r:      0.8vw;  /* base border-radius unit                  */
+}
+
+*, *::before, *::after { margin:0; padding:0; box-sizing:border-box; }
+
+html {
+  /* Root font = 1.3% of viewport width → ~25px on 1920px display */
+  font-size: 1.3vw;
+}
+
+body {
+  width:100%; height:100%;
+  background: var(--bg);
+  color: var(--text);
+  font-family: 'DM Sans', sans-serif;
+  overflow: hidden;
+  -webkit-font-smoothing: antialiased;
+  user-select: none;
+}
+
+/* ═══ SCREEN WRAPPER — fills 100vw × 100vh, locks 21:9 ═══ */
+.screen {
+  width: 100vw;
+  height: 100vh;
+  position: relative;
+  display: grid;
+  grid-template-columns: var(--col-w) 1fr var(--col-w);
+  grid-template-rows: 1fr;
+  background: var(--bg);
+  overflow: hidden;
+}
+.screen::after {
+  content:''; position:absolute; inset:0; pointer-events:none; z-index:0;
+  background-image:
+    linear-gradient(rgba(255,255,255,0.022) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255,255,255,0.022) 1px, transparent 1px);
+  background-size: 3.5vw 3.5vw;
+}
+
+/* ─── LEFT: SPEED ─── */
+.col-speed {
+  display:flex; flex-direction:column; align-items:center; justify-content:center;
+  padding: 0 1.8vw; position:relative; z-index:2;
+  border-right: 1px solid var(--line);
+  gap: 0;
+}
+
+.speed-tag {
+  font-family:'Syne Mono',monospace;
+  font-size: 0.55rem;
+  letter-spacing: 0.28em;
+  color: var(--muted2);
+  text-transform: uppercase;
+  margin-bottom: 1.2vh;
+}
+
+.speedometer {
+  position: relative;
+  width: 16vw;
+  max-width: 280px;
+  aspect-ratio: 1;
+  display: flex; align-items:center; justify-content:center;
+}
+.speedometer svg {
+  position:absolute; inset:0; width:100%; height:100%;
+  transform: rotate(-222deg);
+}
+.spd-track { fill:none; stroke:rgba(255,255,255,0.06); stroke-width:5; stroke-linecap:round; }
+.spd-fill  {
+  fill:none; stroke:var(--ok); stroke-width:5; stroke-linecap:round;
+  stroke-dasharray:288; stroke-dashoffset:288;
+  transition: stroke-dashoffset 0.38s cubic-bezier(.4,0,.2,1), stroke 0.38s;
+  filter: drop-shadow(0 0 0.4vw var(--ok));
+}
+.spd-fill.warn   { stroke:var(--warn);   filter:drop-shadow(0 0 0.4vw var(--warn)); }
+.spd-fill.danger { stroke:var(--danger); filter:drop-shadow(0 0 0.4vw var(--danger)); }
+
+.spd-inner { display:flex; flex-direction:column; align-items:center; z-index:1; }
+.spd-num {
+  font-family:'Space Grotesk',sans-serif; font-weight:700;
+  font-size: 4.8vw;
+  line-height:1; letter-spacing:-0.05em; color:var(--text);
+  transition: color 0.3s;
+}
+.spd-num.warn   { color:var(--warn); }
+.spd-num.danger { color:var(--danger); animation: flash-num 0.75s ease-in-out infinite; }
+.spd-unit {
+  font-size: 0.7rem; font-weight:500; color:var(--muted);
+  letter-spacing:0.22em; text-transform:uppercase; margin-top:0.3vh;
+}
+
+/* delta pill */
+.delta-pill {
+  margin-top: 1.5vh;
+  display:flex; align-items:center; gap:0.5vw;
+  background:var(--bg3); border:1px solid var(--line);
+  border-radius:100px; padding:0.4vh 1.1vw 0.4vh 0.7vw;
+}
+.dp-dot {
+  width:0.55vw; height:0.55vw; min-width:6px; min-height:6px;
+  border-radius:50%; background:var(--ok); flex-shrink:0; transition:background 0.3s;
+}
+.dp-dot.warn   { background:var(--warn); }
+.dp-dot.danger { background:var(--danger); box-shadow:0 0 0.3vw var(--danger); }
+.dp-txt {
+  font-family:'Space Grotesk',sans-serif; font-size:0.72rem; font-weight:500;
+  color:var(--muted); white-space:nowrap; text-align:center;
+}
+
+/* ─── CENTER ─── */
+.col-center {
+  display:flex; flex-direction:column; align-items:center; justify-content:center;
+  position:relative; z-index:2; padding:0 1.5vw; gap:0;
+}
+
+.hbar {
+  position:absolute; top:0; left:0; right:0; height:var(--hbar-h);
+  display:flex; align-items:center; justify-content:space-between;
+  padding:0 1.5vw; border-bottom:1px solid var(--line);
+  background:rgba(7,8,11,0.85); backdrop-filter:blur(8px);
+}
+.hbar-brand {
+  font-family:'Syne Mono',monospace; font-size:0.6rem;
+  letter-spacing:0.32em; color:var(--muted2); text-transform:uppercase;
+}
+.hbar-right { display:flex; align-items:center; gap:1.2vw; }
+.voice-bars { display:flex; align-items:center; gap:2px; opacity:0; transition:opacity 0.3s; }
+.voice-bars.on { opacity:1; }
+.vb { width:3px; border-radius:2px; background:var(--accent); animation:vbw 0.5s ease-in-out infinite alternate; }
+.vb:nth-child(1){height:5px;  animation-delay:0s;}
+.vb:nth-child(2){height:10px; animation-delay:0.07s;}
+.vb:nth-child(3){height:16px; animation-delay:0.04s;}
+.vb:nth-child(4){height:10px; animation-delay:0.11s;}
+.vb:nth-child(5){height:5px;  animation-delay:0.06s;}
+.vbadge {
+  font-family:'Syne Mono',monospace; font-size:0.5rem; color:var(--muted2);
+  letter-spacing:0.07em; padding:0.3vh 0.6vw;
+  background:rgba(255,255,255,0.03); border:1px solid var(--line);
+  border-radius:4px; white-space:nowrap;
+}
+
+/* sign */
+.sign-wrap { display:flex; flex-direction:column; align-items:center; gap:1.8vh; }
+.sign-outer {
+  width: 14vw;
+  max-width: 240px;
+  aspect-ratio:1; border-radius:50%;
+  background:#fff; border: 1.1vw solid #d41e1e;
+  display:flex; align-items:center; justify-content:center; flex-direction:column;
+  box-shadow: 0 0 0 0.2vw rgba(212,30,30,0.1), 0 0.6vw 2.5vw rgba(0,0,0,0.5), 0 0 2.5vw rgba(212,30,30,0.08);
+  transition: box-shadow 0.5s;
+}
+.sign-outer.glow {
+  box-shadow: 0 0 0 0.2vw rgba(212,30,30,0.28),
+              0 0.6vw 2.5vw rgba(0,0,0,0.5),
+              0 0 4vw rgba(212,30,30,0.32),
+              0 0 7vw rgba(212,30,30,0.12);
+}
+.sign-outer.empty {
+  background:transparent; border:2px dashed rgba(255,255,255,0.09); box-shadow:none;
+}
+.sign-num {
+  font-family:'Space Grotesk',sans-serif; font-weight:700;
+  font-size: 3.8vw; color:#111; line-height:1; letter-spacing:-0.03em;
+}
+.sign-kmh {
+  font-family:'DM Sans',sans-serif; font-size:0.75rem;
+  color:#555; font-weight:600; letter-spacing:0.07em; margin-top:0.2vh;
+}
+.sign-empty-ico { width:36%; opacity:0.16; }
+
+@keyframes sign-pop {
+  0%  { transform:scale(0.5) translateY(12px); opacity:0; }
+  72% { transform:scale(1.07); opacity:1; }
+  100%{ transform:scale(1) translateY(0); opacity:1; }
+}
+.sign-outer.pop { animation:sign-pop 0.44s cubic-bezier(.22,1.2,.36,1) forwards; }
+
+.ann {
+  font-family:'DM Sans',sans-serif; font-size:0.9rem;
+  font-weight:500; color:var(--muted); text-align:center; min-height:1.4em; transition:color 0.3s;
+}
+.ann.lit { color:var(--text); }
+
+/* coords bar */
+.cbar {
+  position:absolute; bottom:0; left:0; right:0; height:var(--cbar-h);
+  display:flex; align-items:center; justify-content:center;
+  border-top:1px solid var(--line); background:rgba(7,8,11,0.75);
+}
+.cbar-txt {
+  font-family:'Syne Mono',monospace; font-size:0.55rem;
+  color:var(--muted2); letter-spacing:0.1em;
+}
+
+/* ─── RIGHT: INFO ─── */
+.col-info {
+  display:flex; flex-direction:column; justify-content:center;
+  padding: 1vh 1.3vw 1vh 1.1vw; gap:1vh;
+  border-left:1px solid var(--line); position:relative; z-index:2;
+}
+
+.icard {
+  background:var(--bg3); border:1px solid var(--line); border-radius:calc(var(--r)*1.1);
+  padding:1vh 1vw; display:flex; align-items:center; gap:0.8vw;
+  position:relative; overflow:hidden;
+}
+.icard::before {
+  content:''; position:absolute; left:0; top:0; bottom:0; width:2px;
+  border-radius:2px 0 0 2px; background:var(--accent); transition:background 0.3s;
+}
+.icard.ok-b::before    { background:var(--ok); }
+.icard.warn-b::before  { background:var(--warn); }
+.icard.danger-b::before{ background:var(--danger); }
+
+.icard-ico {
+  width:2.2vw; min-width:28px; height:2.2vw; min-height:28px;
+  flex-shrink:0; display:flex; align-items:center; justify-content:center;
+  border-radius:0.6vw; background:rgba(255,255,255,0.04); font-size:0.85rem;
+}
+.icard-body { flex:1; min-width:0; }
+.icard-lbl {
+  font-size:0.52rem; letter-spacing:0.18em; color:var(--muted2);
+  text-transform:uppercase; line-height:1; margin-bottom:0.3vh;
+}
+.icard-val {
+  font-family:'Space Grotesk',sans-serif; font-size:0.9rem; font-weight:600;
+  color:var(--text); white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+}
+
+/* ── BEEP BUTTON ── */
+.beep-btn {
+  background:var(--bg3); border:1px solid var(--line); border-radius:calc(var(--r)*1.1);
+  padding:1vh 1vw; display:flex; align-items:center; gap:0.8vw;
+  cursor:pointer; transition:all 0.22s; position:relative; overflow:hidden; outline:none;
+}
+.beep-btn::before {
+  content:''; position:absolute; left:0; top:0; bottom:0; width:2px;
+  border-radius:2px 0 0 2px; background:rgba(255,255,255,0.12); transition:background 0.3s;
+}
+.beep-btn.on::before { background:var(--ok); }
+.beep-btn:hover { border-color:rgba(255,255,255,0.12); }
+.beep-btn:active { transform:scale(0.975); }
+
+.beep-ico-wrap {
+  width:2.2vw; min-width:28px; height:2.2vw; min-height:28px;
+  flex-shrink:0; display:flex; align-items:center; justify-content:center;
+  border-radius:0.6vw; background:rgba(255,255,255,0.04); transition:background 0.3s;
+}
+.beep-btn.on .beep-ico-wrap { background:rgba(61,232,160,0.11); }
+.beep-svg { width:1.1vw; min-width:15px; height:1.1vw; min-height:15px; }
+
+.beep-body { flex:1; min-width:0; }
+.beep-lbl {
+  font-size:0.52rem; letter-spacing:0.18em; color:var(--muted2);
+  text-transform:uppercase; line-height:1; margin-bottom:0.3vh;
+}
+.beep-state {
+  font-family:'Space Grotesk',sans-serif; font-size:0.88rem;
+  font-weight:600; color:var(--muted); transition:color 0.3s;
+}
+.beep-btn.on .beep-state { color:var(--ok); }
+
+/* toggle switch */
+.tog {
+  width:2.6vw; min-width:34px; height:1.4vw; min-height:18px;
+  flex-shrink:0; background:rgba(255,255,255,0.1);
+  border-radius:100px; position:relative; transition:background 0.28s;
+}
+.beep-btn.on .tog { background:var(--ok); }
+.tog::after {
+  content:''; position:absolute; top:2px; left:2px;
+  width:calc(1.4vw - 4px); min-width:14px;
+  height:calc(1.4vw - 4px); min-height:14px;
+  border-radius:50%; background:#fff; box-shadow:0 1px 4px rgba(0,0,0,0.35);
+  transition:transform 0.28s cubic-bezier(.4,0,.2,1);
+}
+.beep-btn.on .tog::after { transform:translateX(calc(1.2vw)); }
+
+/* gps mini row */
+.gps-mini { display:flex; align-items:center; gap:0.5vw; padding:0.2vh 0 0 0.2vw; }
+.gps-dot  {
+  width:0.45vw; min-width:6px; height:0.45vw; min-height:6px;
+  border-radius:50%; background:var(--ok); box-shadow:0 0 0.4vw var(--ok);
+}
+.gps-dot.searching {
+  background:var(--warn); box-shadow:0 0 0.4vw var(--warn);
+  animation:dotblink 0.6s ease-in-out infinite;
+}
+.gps-dot.error { background:var(--danger); box-shadow:0 0 0.4vw var(--danger); }
+.gps-lbl { font-size:0.52rem; color:var(--muted2); letter-spacing:0.1em; }
+
+/* alert ring */
+.alert-ring {
+  position:absolute; inset:0; pointer-events:none; z-index:50;
+  opacity:0; transition:opacity 0.3s;
+  box-shadow:inset 0 0 0 3px var(--danger), inset 0 0 4vw rgba(255,61,90,0.07);
+}
+.alert-ring.on { opacity:1; animation:ringpulse 0.95s ease-in-out infinite; }
+
+/* DEMO BAR */
+.demo-bar {
+  position:absolute; bottom:4.5vh; left:50%; transform:translateX(-50%);
+  display:flex; gap:0.3vw; align-items:center; z-index:200;
+  background:rgba(7,8,11,0.9); border:1px solid var(--line);
+  border-radius:100px; padding:0.5vh 0.7vw; backdrop-filter:blur(10px);
+}
+.dbtn {
+  font-family:'Space Grotesk',sans-serif; font-size:0.65rem; font-weight:600;
+  padding:0.5vh 0.9vw; border-radius:100px;
+  background:transparent; border:1px solid transparent;
+  color:var(--muted); cursor:pointer; transition:all 0.18s; letter-spacing:0.04em;
+}
+.dbtn:hover { background:var(--bg3); border-color:var(--line); color:var(--text); }
+.dsep { width:1px; height:1.4vh; background:var(--line); }
+
+/* PERMISSION OVERLAY */
+.perm {
+  position:absolute; inset:0;
+  background:rgba(7,8,11,0.97);
+  display:flex; flex-direction:column; align-items:center; justify-content:center;
+  gap:2vh; z-index:500;
+}
+.perm-logo {
+  font-family:'Syne Mono',monospace; font-size:2rem;
+  letter-spacing:0.28em; color:var(--text);
+}
+.perm-logo em { font-style:normal; color:var(--ok); }
+.perm-sub {
+  font-size:0.78rem; color:var(--muted);
+  text-align:center; max-width:38vw; line-height:1.75;
+}
+.perm-card {
+  background:var(--bg3); border:1px solid var(--line); border-radius:1vw;
+  padding:1.5vh 1.5vw; width:38vw; max-width:560px;
+  display:flex; flex-direction:column; gap:1vh;
+}
+.perm-ctitle {
+  font-family:'Syne Mono',monospace; font-size:0.55rem;
+  letter-spacing:0.2em; color:var(--muted2); text-transform:uppercase;
+}
+.perm-cdesc { font-size:0.7rem; color:var(--muted); line-height:1.65; }
+.perm-cdesc strong { color:var(--accent); }
+.perm-inp {
+  width:100%; background:rgba(255,255,255,0.04); border:1px solid var(--line);
+  border-radius:0.6vw; color:var(--text); font-family:'Syne Mono',monospace;
+  font-size:0.7rem; padding:1vh 1vw; outline:none; letter-spacing:0.04em;
+}
+.perm-inp::placeholder { color:var(--muted2); }
+.perm-inp:focus { border-color:rgba(255,255,255,0.18); }
+.perm-btns { display:flex; gap:0.8vw; width:38vw; max-width:560px; }
+.perm-btn {
+  flex:1; font-family:'Space Grotesk',sans-serif; font-size:0.78rem; font-weight:600;
+  letter-spacing:0.08em; padding:1.2vh 1.5vw;
+  border-radius:0.7vw; border:none; cursor:pointer; transition:all 0.2s;
+}
+.perm-btn.p { background:var(--ok); color:#07080b; }
+.perm-btn.p:hover { filter:brightness(1.1); transform:translateY(-1px); }
+.perm-btn.s { background:var(--bg3); border:1px solid var(--line); color:var(--muted); }
+.perm-btn.s:hover { border-color:rgba(255,255,255,0.15); color:var(--text); }
+
+/* KEYFRAMES */
+@keyframes flash-num { 0%,100%{opacity:1} 50%{opacity:0.52} }
+@keyframes vbw  { from{transform:scaleY(0.3)} to{transform:scaleY(1)} }
+@keyframes dotblink { 0%,100%{opacity:1} 50%{opacity:0.18} }
+@keyframes ringpulse {
+  0%,100%{ box-shadow:inset 0 0 0 3px var(--danger), inset 0 0 4vw rgba(255,61,90,0.07); }
+  50%    { box-shadow:inset 0 0 0 3px var(--danger), inset 0 0 6vw rgba(255,61,90,0.18); }
+}
+
+/* GPS switch button inside demo bar */
+.dbtn-gps {
+  color: var(--ok);
+  border-color: rgba(61,232,160,0.25) !important;
+  background: rgba(61,232,160,0.07) !important;
+}
+.dbtn-gps:hover {
+  background: rgba(61,232,160,0.15) !important;
+  border-color: rgba(61,232,160,0.5) !important;
+  color: var(--ok) !important;
+}
+
+@keyframes beep-flash {
+  0%   { box-shadow:inset 0 0 0 4px var(--danger), inset 0 0 8vw rgba(255,61,90,0.22); opacity:1; }
+  100% { box-shadow:inset 0 0 0 3px var(--danger), inset 0 0 4vw rgba(255,61,90,0.07); opacity:1; }
+}
+</style>
+</head>
+<body>
+<div class="screen" id="screen">
+
+  <div class="alert-ring" id="alertRing"></div>
+
+  <!-- LEFT: SPEED -->
+  <div class="col-speed">
+    <div class="speed-tag">Velocità</div>
+    <div class="speedometer">
+      <svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+        <circle class="spd-track" cx="50" cy="50" r="45" stroke-dasharray="288" stroke-dashoffset="0"/>
+        <circle class="spd-fill"  cx="50" cy="50" r="45" id="spdArc"/>
+      </svg>
+      <div class="spd-inner">
+        <div class="spd-num" id="spdNum">0</div>
+        <div class="spd-unit">km/h</div>
+      </div>
+    </div>
+    <div class="delta-pill" id="deltaPill">
+      <div class="dp-dot" id="dpDot"></div>
+      <div class="dp-txt" id="dpTxt">Nessun limite</div>
+    </div>
+  </div>
+
+  <!-- CENTER: SIGN -->
+  <div class="col-center">
+    <div class="hbar">
+      <div class="hbar-brand">SpeedGuard</div>
+      <div class="hbar-right">
+        <div class="voice-bars" id="voiceBars">
+          <div class="vb"></div><div class="vb"></div><div class="vb"></div><div class="vb"></div><div class="vb"></div>
+        </div>
+        <div class="vbadge" id="vbadge">Inizializzazione…</div>
+      </div>
+    </div>
+
+    <div class="sign-wrap">
+      <div class="sign-outer empty" id="signOuter">
+        <svg class="sign-empty-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+          <circle cx="12" cy="12" r="10"/><line x1="6" y1="6" x2="18" y2="18"/>
+        </svg>
+      </div>
+      <div class="ann" id="annTxt">In attesa di segnale GPS…</div>
+    </div>
+
+    <div class="cbar"><div class="cbar-txt" id="coordsTxt">– ° N &nbsp;|&nbsp; – ° E</div></div>
+  </div>
+
+  <!-- RIGHT: INFO -->
+  <div class="col-info">
+
+    <div class="icard ok-b" id="icLimit">
+      <div class="icard-ico">⚑</div>
+      <div class="icard-body">
+        <div class="icard-lbl">Limite attuale</div>
+        <div class="icard-val" id="icLimitVal">– km/h</div>
+      </div>
+    </div>
+
+    <div class="icard" id="icDelta">
+      <div class="icard-ico" id="icDeltaIco">↕</div>
+      <div class="icard-body">
+        <div class="icard-lbl" id="icDeltaLbl">Margine</div>
+        <div class="icard-val" id="icDeltaVal">–</div>
+      </div>
+    </div>
+
+    <div class="icard" id="icGps">
+      <div class="icard-ico">◎</div>
+      <div class="icard-body">
+        <div class="icard-lbl">GPS</div>
+        <div class="icard-val" id="gpsVal">Ricerca…</div>
+      </div>
+      <div class="gps-dot searching" id="gpsDot" style="flex-shrink:0;margin-left:auto;"></div>
+    </div>
+
+    <!-- BEEP BUTTON -->
+    <button class="beep-btn on" id="beepBtn" onclick="toggleBeep()">
+      <div class="beep-ico-wrap">
+        <svg class="beep-svg" id="bsvgOn" viewBox="0 0 24 24" fill="none" stroke="var(--ok)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/>
+          <path d="M19.07 4.93a10 10 0 0 1 0 14.14"/>
+          <path d="M15.54 8.46a5 5 0 0 1 0 7.07"/>
+        </svg>
+        <svg class="beep-svg" id="bsvgOff" style="display:none" viewBox="0 0 24 24" fill="none" stroke="var(--muted)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/>
+          <line x1="23" y1="9" x2="17" y2="15"/><line x1="17" y1="9" x2="23" y2="15"/>
+        </svg>
+      </div>
+      <div class="beep-body">
+        <div class="beep-lbl">Allarme acustico</div>
+        <div class="beep-state" id="beepStateTxt">Attivo</div>
+      </div>
+      <div class="tog" id="beepTog"></div>
+    </button>
+
+    <div class="gps-mini">
+      <div class="gps-dot" style="opacity:0.45;box-shadow:none;"></div>
+      <span class="gps-lbl" id="gpsAccTxt">Precisione: –</span>
+    </div>
+
+  </div>
+
+  <!-- DEMO BAR -->
+  <div class="demo-bar" id="demoBar" style="display:none;">
+    <button class="dbtn" onclick="simulateLimit(30)">30</button>
+    <button class="dbtn" onclick="simulateLimit(50)">50</button>
+    <button class="dbtn" onclick="simulateLimit(70)">70</button>
+    <div class="dsep"></div>
+    <button class="dbtn" onclick="simulateLimit(90)">90</button>
+    <button class="dbtn" onclick="simulateLimit(110)">110</button>
+    <button class="dbtn" onclick="simulateLimit(130)">130</button>
+    <div class="dsep"></div>
+    <button class="dbtn" onclick="simulateLimit(null)" style="font-size:0.6em;">∅ Nessun</button>
+    <div class="dsep"></div>
+    <button class="dbtn" id="simSpeedBtn" onclick="toggleSimSpeed()">▶ Velocità</button>
+    <div class="dsep"></div>
+    <button class="dbtn dbtn-gps" onclick="switchToGPS()" title="Passa alla modalità GPS reale">
+      ◎ Attiva GPS
+    </button>
+  </div>
+
+  <!-- PERMISSION -->
+  <div class="perm" id="permEl">
+    <div class="perm-logo">SPEED<em>GUARD</em></div>
+    <div class="perm-sub">Rilevamento limiti di velocità con segnalazione vocale e allarme acustico personalizzabile.</div>
+    <div class="perm-card">
+      <div class="perm-ctitle">Voce ultra-realistica (opzionale)</div>
+      <div class="perm-cdesc">Inserisci un'API key di <strong>ElevenLabs</strong> per voce italiana neurale quasi umana.<br>Senza key si usa automaticamente Google TTS o la voce migliore del dispositivo.</div>
+      <input class="perm-inp" id="elKey" type="password" placeholder="ElevenLabs API Key (opzionale)…"/>
+    </div>
+    <div class="perm-btns">
+      <button class="perm-btn p" onclick="applyKeyAndGPS()">Attiva GPS</button>
+      <button class="perm-btn s" onclick="applyKeyAndDemo()">Demo</button>
+    </div>
+  </div>
+
+</div>
+
+<script>
+// ══════════════════
+//  WAKE LOCK — keeps screen on while app is open
+// ══════════════════
+let wakeLock = null;
+
+async function requestWakeLock() {
+  if ('wakeLock' in navigator) {
+    try {
+      wakeLock = await navigator.wakeLock.request('screen');
+      wakeLock.addEventListener('release', () => {
+        // Re-acquire if released by browser (e.g. tab hidden then visible again)
+        wakeLock = null;
+      });
+    } catch(e) {
+      console.warn('Wake Lock non disponibile:', e.message);
+    }
+  }
+}
+
+// Re-acquire when page becomes visible again (e.g. user switches back)
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState === 'visible' && !wakeLock) {
+    requestWakeLock();
+  }
+});
+
+// Request immediately on load
+requestWakeLock();
+
+// ── STATE ──
+let currentLimit    = null;
+let currentSpeed    = 0;
+let beepEnabled     = true;
+let isOverLimit     = false;
+let isSpeaking      = false;   // guard: prevents double-speak on same limit
+let beepCtx         = null;
+let currentAudio    = null;
+let watchId         = null;
+let simRunning      = false;
+let simVal          = 0;
+let simDir          = 1;
+let simInterval     = null;
+let lastLimitCheck  = 0;
+
+const EL_VOICE = 'XB0fDUnXU5powFXDhCwa';
+const EL_KEY   = '';
+
+// ── DOM ──
+const spdNum    = document.getElementById('spdNum');
+const spdArc    = document.getElementById('spdArc');
+const dpDot     = document.getElementById('dpDot');
+const dpTxt     = document.getElementById('dpTxt');
+const signOuter = document.getElementById('signOuter');
+const annTxt    = document.getElementById('annTxt');
+const voiceBars = document.getElementById('voiceBars');
+const vbadge    = document.getElementById('vbadge');
+const coordsTxt = document.getElementById('coordsTxt');
+const icLimitVal= document.getElementById('icLimitVal');
+const icLimit   = document.getElementById('icLimit');
+const icDelta   = document.getElementById('icDelta');
+const icDeltaLbl= document.getElementById('icDeltaLbl');
+const icDeltaVal= document.getElementById('icDeltaVal');
+const icDeltaIco= document.getElementById('icDeltaIco');
+const gpsVal    = document.getElementById('gpsVal');
+const gpsDot    = document.getElementById('gpsDot');
+const gpsAccTxt = document.getElementById('gpsAccTxt');
+const alertRing = document.getElementById('alertRing');
+const beepBtn   = document.getElementById('beepBtn');
+const bsvgOn    = document.getElementById('bsvgOn');
+const bsvgOff   = document.getElementById('bsvgOff');
+const beepStateTxt = document.getElementById('beepStateTxt');
+const permEl    = document.getElementById('permEl');
+
+// ══════════════════
+//  BEEP TOGGLE
+// ══════════════════
+function toggleBeep() {
+  beepEnabled = !beepEnabled;
+  beepBtn.classList.toggle('on', beepEnabled);
+  beepStateTxt.textContent = beepEnabled ? 'Attivo' : 'Disattivato';
+  bsvgOn.style.display  = beepEnabled ? '' : 'none';
+  bsvgOff.style.display = beepEnabled ? 'none' : '';
+  if (!beepEnabled) { /* nothing to stop, beep was one-shot */ }
+  // Note: re-enabling won't retroactively beep; next speed crossing will trigger it
+}
+
+// ══════════════════
+//  WEB AUDIO BEEP
+// ══════════════════
+function getCtx() {
+  if (!beepCtx) beepCtx = new (window.AudioContext || window.webkitAudioContext)();
+  return beepCtx;
+}
+function playBeep(freq, dur, vol) {
+  try {
+    const ctx  = getCtx();
+    const osc  = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.connect(gain); gain.connect(ctx.destination);
+    osc.type = 'sine';
+    osc.frequency.setValueAtTime(freq, ctx.currentTime);
+    gain.gain.setValueAtTime(0, ctx.currentTime);
+    gain.gain.linearRampToValueAtTime(vol, ctx.currentTime + 0.012);
+    gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + dur);
+    osc.start(ctx.currentTime);
+    osc.stop(ctx.currentTime + dur + 0.02);
+  } catch(e) {}
+}
+function alarmBeep() {
+  // Double-pip — fires once, does not repeat
+  playBeep(980, 0.11, 0.5);
+  setTimeout(() => playBeep(980, 0.11, 0.5), 175);
+}
+function triggerBeepOnce() {
+  // Called only on the transition from under→over limit
+  alarmBeep();
+}
+// Kept for compatibility (toggle-off path still calls this)
+function stopBeepLoop() { /* nothing to stop — single-shot beep */ }
+
+// ══════════════════
+//  SPEED UPDATE
+// ══════════════════
+function updateSpeed(kmh) {
+  currentSpeed = Math.round(Math.max(0, kmh));
+  spdNum.textContent = currentSpeed;
+
+  // arc
+  const pct  = Math.min(currentSpeed / 180, 1);
+  spdArc.style.strokeDashoffset = 288 - pct * 288;
+
+  const over = currentLimit !== null && currentSpeed > currentLimit;
+  const near = currentLimit !== null && !over && currentSpeed >= currentLimit * 0.88;
+
+  spdArc.className = 'spd-fill' + (over ? ' danger' : near ? ' warn' : '');
+  spdNum.className = 'spd-num'  + (over ? ' danger' : near ? ' warn' : '');
+  alertRing.classList.toggle('on', over);
+
+  // delta
+  if (currentLimit !== null) {
+    const d = currentLimit - currentSpeed;
+    dpDot.className   = 'dp-dot' + (d < 0 ? ' danger' : d < currentLimit * 0.12 ? ' warn' : '');
+    dpTxt.textContent = d >= 0 ? `+${d} km/h di margine` : `${Math.abs(d)} km/h in eccesso`;
+    icDeltaVal.textContent  = (d >= 0 ? '+' : '') + d + ' km/h';
+    icDeltaLbl.textContent  = d < 0 ? '⚠ Eccesso velocità' : 'Margine disponibile';
+    icDeltaIco.textContent  = d < 0 ? '↑' : '↓';
+    icDelta.className = 'icard ' + (d < 0 ? 'danger-b' : d < currentLimit * 0.12 ? 'warn-b' : 'ok-b');
+  } else {
+    dpTxt.textContent   = 'Nessun limite';
+    dpDot.className     = 'dp-dot';
+    icDeltaVal.textContent = '–';
+    icDeltaLbl.textContent = 'Margine';
+    icDelta.className   = 'icard';
+  }
+
+  // beep logic — fires once on the crossing moment, not continuously
+  if (over && beepEnabled && !isOverLimit) {
+    isOverLimit = true;
+    triggerBeepOnce();   // single shot on crossing
+  } else if (!over && isOverLimit) {
+    isOverLimit = false; // reset so next crossing fires again
+  }
+}
+
+// ══════════════════
+//  SIGN UPDATE
+// ══════════════════
+function updateSign(limit) {
+  if (limit === currentLimit) return;
+  currentLimit = limit;
+
+  if (limit === null) {
+    signOuter.className = 'sign-outer empty';
+    signOuter.innerHTML = `<svg class="sign-empty-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+      <circle cx="12" cy="12" r="10"/><line x1="6" y1="6" x2="18" y2="18"/></svg>`;
+    annTxt.textContent = 'Nessun limite rilevato';
+    annTxt.className   = 'ann';
+    icLimitVal.textContent = '– km/h';
+    icLimit.className  = 'icard';
+    isOverLimit = false; stopBeepLoop(); alertRing.classList.remove('on');
+  } else {
+    signOuter.className = 'sign-outer pop glow';
+    signOuter.innerHTML = `<span class="sign-num">${limit}</span><span class="sign-kmh">km/h</span>`;
+    setTimeout(() => signOuter.classList.remove('glow','pop'), 1500);
+    annTxt.textContent = `Limite di velocità a ${limit} km/h`;
+    annTxt.className   = 'ann lit';
+    icLimitVal.textContent = `${limit} km/h`;
+    icLimit.className  = 'icard ok-b';
+    // Re-evaluate speed state against new limit (visual only, no double-speak)
+    const _over = currentSpeed > limit;
+    spdArc.className = 'spd-fill' + (_over ? ' danger' : (currentSpeed >= limit*0.88 ? ' warn' : ''));
+    spdNum.className = 'spd-num'  + (_over ? ' danger' : (currentSpeed >= limit*0.88 ? ' warn' : ''));
+    alertRing.classList.toggle('on', _over);
+    speak(`Limite di velocità a ${limit} chilometri orari`);
+  }
+}
+
+// ══════════════════
+//  VOICE ENGINE
+// ══════════════════
+function setVBadge(name) { vbadge.textContent = name; }
+
+async function speakEL(text) {
+  const key = window._elKeyOverride || EL_KEY;
+  if (!key) throw new Error('no key');
+  const r = await fetch(`https://api.elevenlabs.io/v1/text-to-speech/${EL_VOICE}/stream`, {
+    method:'POST',
+    headers:{ 'xi-api-key':key, 'Content-Type':'application/json' },
+    body: JSON.stringify({ text, model_id:'eleven_multilingual_v2',
+      voice_settings:{ stability:0.45, similarity_boost:0.82, style:0.35, use_speaker_boost:true }})
+  });
+  if (!r.ok) throw new Error('EL error');
+  return await r.blob();
+}
+
+// ── VOICE: selects best MALE Italian voice, single execution path ──
+function bestMaleItVoice() {
+  const vv = window.speechSynthesis?.getVoices() || [];
+  // Priority: explicit male Italian voices first, then any Italian
+  const tests = [
+    v => v.name.includes('Luca')     && v.lang.startsWith('it'),
+    v => v.name.includes('Diego')    && v.lang.startsWith('it'),
+    v => v.name.includes('Giorgio')  && v.lang.startsWith('it'),
+    v => v.name.includes('Google')   && v.lang === 'it-IT',
+    v => v.lang === 'it-IT',
+    v => v.lang.startsWith('it'),
+  ];
+  for (const t of tests) { const f = vv.find(t); if(f) return f; }
+  return null;
+}
+
+// Single authoritative speak function
+async function speak(text) {
+  if (isSpeaking) return;   // re-entry guard
+  isSpeaking = true;
+
+  // Safety release: if onend never fires (Android Chrome bug), unlock after 8s
+  const safetyTimer = setTimeout(() => { isSpeaking = false; voiceBars.classList.remove('on'); }, 8000);
+  const done = () => { clearTimeout(safetyTimer); voiceBars.classList.remove('on'); isSpeaking = false; };
+
+  // Stop anything already playing
+  if (currentAudio) { currentAudio.pause(); currentAudio = null; }
+  const ss = window.speechSynthesis;
+  if (ss) ss.cancel();
+
+  voiceBars.classList.add('on');
+
+  // ── Path A: ElevenLabs (only when API key is set) ──
+  if (EL_KEY || window._elKeyOverride) {
+    try {
+      const blob = await speakEL(text);
+      const url  = URL.createObjectURL(blob);
+      currentAudio = new Audio(url);
+      setVBadge('ElevenLabs Neural');
+      await new Promise((res, rej) => {
+        currentAudio.onended = res;
+        currentAudio.onerror = rej;
+        currentAudio.play().catch(rej);
+      });
+      URL.revokeObjectURL(url);
+      done(); return;
+    } catch(e) {
+      if (currentAudio) { currentAudio.pause(); currentAudio = null; }
+    }
+  }
+
+  // ── Path B: Web Speech API ──
+  if (!ss) { done(); return; }
+
+  // Android Chrome workaround: Web Speech pauses after ~15s unless periodically resumed
+  ss.cancel();
+  await new Promise(res => setTimeout(res, 80)); // brief pause after cancel
+
+  await new Promise(res => {
+    const u = new SpeechSynthesisUtterance(text);
+    u.lang   = 'it-IT';
+    u.rate   = 0.87;
+    u.pitch  = 0.9;
+    u.volume = 1.0;
+    const voice = bestMaleItVoice();
+    if (voice) { u.voice = voice; setVBadge(voice.name); }
+    u.onend   = res;
+    u.onerror = res;
+    // Android Chrome resume workaround
+    const resumeHack = setInterval(() => { if (ss.paused) ss.resume(); }, 200);
+    u.onend = () => { clearInterval(resumeHack); res(); };
+    u.onerror = () => { clearInterval(resumeHack); res(); };
+    ss.speak(u);
+  });
+
+  done();
+}
+
+// ══════════════════
+//  GPS
+// ══════════════════
+function switchToGPS() {
+  // Stop simulation if running
+  if (simRunning) {
+    clearInterval(simInterval); simRunning = false; simVal = 0;
+    document.getElementById('simSpeedBtn').textContent = '▶ Velocità';
+  }
+  // Reset state
+  currentLimit = null; isOverLimit = false;
+  updateSign(null); updateSpeed(0);
+  // Hide demo bar, show permission overlay again so user can confirm GPS
+  document.getElementById('demoBar').style.display = 'none';
+  permEl.style.display = 'flex';
+}
+
+function requestGPS() {
+  permEl.style.display='none';
+  gpsDot.className='gps-dot searching'; gpsVal.textContent='Ricerca…';
+  if (!navigator.geolocation) { gpsVal.textContent='Non supportato'; return; }
+  watchId = navigator.geolocation.watchPosition(onPos, onGpsErr,
+    { enableHighAccuracy:true, maximumAge:2000, timeout:10000 });
+}
+
+let lastLat = null, lastLon = null;
+
+function haversineM(la1,lo1,la2,lo2) {
+  const R=6371000, dLat=(la2-la1)*Math.PI/180, dLon=(lo2-lo1)*Math.PI/180;
+  const a=Math.sin(dLat/2)**2+Math.cos(la1*Math.PI/180)*Math.cos(la2*Math.PI/180)*Math.sin(dLon/2)**2;
+  return R*2*Math.atan2(Math.sqrt(a),Math.sqrt(1-a));
+}
+
+function onPos(pos) {
+  gpsDot.className='gps-dot'; gpsVal.textContent='Attivo';
+  const {latitude:lat,longitude:lon,speed,accuracy:acc} = pos.coords;
+  coordsTxt.textContent = `${lat.toFixed(5)}° N  |  ${lon.toFixed(5)}° E`;
+  gpsAccTxt.textContent = `Precisione: ±${Math.round(acc)} m`;
+  updateSpeed(speed !== null ? speed*3.6 : currentSpeed);
+
+  const now = Date.now();
+  // Fetch if: 8s elapsed OR moved more than 25m since last fetch
+  const movedFar = lastLat !== null && haversineM(lastLat,lastLon,lat,lon) > 15;
+  if (movedFar || now - lastLimitCheck > 3000) {
+    lastLimitCheck = now; lastLat = lat; lastLon = lon;
+    fetchLimit(lat, lon);
+  }
+}
+function onGpsErr() { gpsDot.className='gps-dot error'; gpsVal.textContent='Errore'; }
+
+// ── Overpass query: finds the road the car is ON (not just nearby)
+// Strategy: search within 20m, pick the way with the HIGHEST node count
+// (most nodes = most detailed = the road we're driving on, not a side street)
+// Also always re-evaluate even if same limit — road may have changed.
+let fetchInFlight = false;
+
+async function fetchLimit(lat, lon) {
+  if (fetchInFlight) return;   // don't stack concurrent requests
+  fetchInFlight = true;
+
+  // Query: get all ways within 25m that have any highway tag,
+  // then also get ways with maxspeed within 60m as fallback.
+  // We use geom so we can compute distance to each way's nodes.
+  const q = `[out:json][timeout:8];
+(
+  way(around:25,${lat},${lon})[highway][maxspeed];
+  way(around:60,${lat},${lon})[highway][maxspeed];
+);
+out tags geom;`;
+
+  try {
+    const ctrl = new AbortController();
+    const timer = setTimeout(() => ctrl.abort(), 9000);
+    const r = await fetch(
+      'https://overpass-api.de/api/interpreter?data=' + encodeURIComponent(q),
+      { signal: ctrl.signal }
+    );
+    clearTimeout(timer);
+    if (!r.ok) { fetchInFlight = false; return; }
+    const d = await r.json();
+
+    if (!d.elements || d.elements.length === 0) {
+      // No road with explicit maxspeed found — don't clear existing sign
+      fetchInFlight = false; return;
+    }
+
+    // Pick the best matching way:
+    // 1. Prefer ways where our position is closest to any node
+    // 2. Among ties, prefer ways with more nodes (main road vs side street)
+    let bestWay = null, bestDist = Infinity;
+    for (const way of d.elements) {
+      if (!way.geometry || !way.tags?.maxspeed) continue;
+      // Find minimum distance from our position to any node of this way
+      let minD = Infinity;
+      for (const node of way.geometry) {
+        const d = haversineM(lat, lon, node.lat, node.lon);
+        if (d < minD) minD = d;
+      }
+      // Weight: closer wins; if equidistant, more nodes wins
+      const score = minD - (way.geometry.length * 0.5);
+      if (score < bestDist) { bestDist = score; bestWay = way; }
+    }
+
+    if (bestWay) {
+      const lim = parseMaxspeed(bestWay.tags.maxspeed);
+      if (lim !== null) {
+        // Force update even if same number — position changed, road may differ
+        if (lim !== currentLimit) updateSign(lim);
+      }
+    }
+  } catch(e) {
+    // Overpass timeout or network error — silently ignore, keep current sign
+  }
+  fetchInFlight = false;
+}
+
+function parseMaxspeed(raw) {
+  if (!raw) return null;
+  // Italian and common European road type tags
+  const m = {
+    'IT:urban': 50, 'IT:rural': 90, 'IT:motorway': 130,
+    'IT:living_street': 10, 'IT:zone30': 30,
+    'DE:urban': 50, 'FR:urban': 50, 'walk': 10, 'none': null
+  };
+  if (raw in m) return m[raw];
+  // Handle "50 mph" etc. → convert to km/h
+  if (raw.toLowerCase().includes('mph')) {
+    const n = parseInt(raw, 10);
+    return (!isNaN(n) && n > 0) ? Math.round(n * 1.60934) : null;
+  }
+  const n = parseInt(raw, 10);
+  return (!isNaN(n) && n > 0) ? n : null;
+}
+
+// ══════════════════
+//  DEMO
+// ══════════════════
+function startDemo() {
+  permEl.style.display='none';
+  document.getElementById('demoBar').style.display='flex';
+  gpsDot.className='gps-dot'; gpsVal.textContent='Demo';
+  gpsAccTxt.textContent='GPS simulato';
+  coordsTxt.textContent='41.12345° N  |  16.86789° E';
+  annTxt.textContent='Modalità demo — usa i pulsanti';
+  updateSpeed(0);
+  setTimeout(()=>{ const v=bestMaleItVoice(); setVBadge(v?v.name:'Web Speech'); },700);
+}
+function simulateLimit(l) { updateSign(l); }
+function toggleSimSpeed() {
+  const b=document.getElementById('simSpeedBtn');
+  if (simRunning) {
+    clearInterval(simInterval); simRunning=false; simVal=0; updateSpeed(0); b.textContent='▶ Velocità';
+  } else {
+    simRunning=true; b.textContent='■ Stop';
+    simInterval = setInterval(()=>{
+      simVal += simDir*(Math.random()*4.2);
+      if (simVal>148) simDir=-1;
+      if (simVal<0)   { simVal=0; simDir=1; }
+      updateSpeed(simVal);
+    }, 270);
+  }
+}
+function applyKeyAndGPS()  { const k=document.getElementById('elKey')?.value?.trim(); if(k) window._elKeyOverride=k; requestGPS(); }
+function applyKeyAndDemo() { const k=document.getElementById('elKey')?.value?.trim(); if(k) window._elKeyOverride=k; startDemo(); }
+
+// ── INIT ──
+if (window.speechSynthesis) {
+  speechSynthesis.onvoiceschanged = ()=>{ const v=bestMaleItVoice(); if(v) setVBadge(v.name); };
+  speechSynthesis.getVoices();
+}
+</script>
+</body>
+</html>
