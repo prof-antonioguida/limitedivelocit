@@ -2,1024 +2,1364 @@
 <html lang="it">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<meta name="theme-color" content="#05070a">
+<meta name="mobile-web-app-capable" content="yes">
 <title>SpeedGuard</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Barlow:wght@500;600;700&family=Barlow+Semi+Condensed:wght@600;700&display=swap" rel="stylesheet">
 <style>
-@import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=Space+Grotesk:wght@300;400;500;600;700&family=Syne+Mono&display=swap');
+/* ==========================================================
+   SpeedGuard — schermo infotainment 10,25" in formato 21:9
+   Tutte le misure derivano da --u: si adatta a 1920×820,
+   2400×1030, 1920×720 e simili senza deformarsi.
+   ========================================================== */
+:root{
+  --bg:#05070a; --card:#0f151e; --card-hi:#17202c; --line:rgba(255,255,255,.13);
+  --text:#ffffff; --label:#ffffff;
+  --ok:#2fe39a; --warn:#ffc53d; --danger:#ff3b55; --accent:#58a6ff; --sign-red:#d0102a;
+  --u:min(1vw,2.35vh);
+  --state:var(--ok);
+}
+body[data-state="warn"]{--state:var(--warn)}
+body[data-state="danger"]{--state:var(--danger)}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%;background:var(--bg);color:var(--text);overflow:hidden}
+body{font-family:'Barlow',system-ui,-apple-system,'Segoe UI',Roboto,Arial,sans-serif;-webkit-font-smoothing:antialiased;user-select:none;-webkit-user-select:none;-webkit-tap-highlight-color:transparent;touch-action:manipulation}
+button,select,input{font:inherit;color:inherit}
+button{background:none;border:0;cursor:pointer}
+.num{font-family:'Barlow Semi Condensed','Barlow',system-ui,sans-serif;font-variant-numeric:tabular-nums}
 
-/* ─────────────────────────────────────────────────────
-   10.25" automotive display — 21:9 (1920×820 / 2400×1080)
-   Base font-size anchored to viewport width so everything
-   scales proportionally regardless of actual pixel density.
-───────────────────────────────────────────────────── */
-:root {
-  --bg:    #07080b;
-  --bg2:   #0d0f14;
-  --bg3:   #12151d;
-  --line:  rgba(255,255,255,0.07);
-  --text:  #f0f2f7;
-  --muted: rgba(240,242,247,0.85);
-  --muted2:rgba(240,242,247,0.62);
-  --ok:    #3de8a0;
-  --warn:  #f5c842;
-  --danger:#ff3d5a;
-  --accent:#4f8eff;
+.app{position:fixed;inset:0;display:grid;grid-template-columns:1fr 1.12fr 1fr;grid-template-rows:calc(var(--u)*4.2) minmax(0,1fr) auto;background:radial-gradient(90% 120% at 50% 45%,#0e1622 0%,#070a10 55%,#05070a 100%)}
 
-  /* All sizing derived from vw so it auto-fits any 21:9 screen */
-  --col-w:  20vw;   /* side panel width  ~384px on 1920px wide  */
-  --hbar-h: 4.2vh;  /* top bar height                           */
-  --cbar-h: 3.5vh;  /* bottom coords bar                        */
-  --r:      0.8vw;  /* base border-radius unit                  */
-}
+/* ---------- barra superiore ---------- */
+.top{grid-column:1/-1;display:flex;align-items:center;gap:calc(var(--u)*1.3);padding:0 calc(var(--u)*1.6);border-bottom:1px solid var(--line)}
+.brand{font-weight:700;letter-spacing:.22em;font-size:calc(var(--u)*1.2)}
+.brand b{color:var(--ok)}
+.chip{font-size:calc(var(--u)*.85);font-weight:700;letter-spacing:.16em;padding:calc(var(--u)*.3) calc(var(--u)*.9);border-radius:999px;border:1px solid var(--line);background:var(--card)}
+.chip.gps{color:var(--ok);border-color:rgba(47,227,154,.55)}
+.chip.demo{color:var(--warn);border-color:rgba(255,197,61,.6)}
+.spacer{flex:1}
+.vbars{display:flex;gap:4px;align-items:center;height:calc(var(--u)*1.6);opacity:0;transition:opacity .2s}
+.vbars.on{opacity:1}
+.vbars i{display:block;width:4px;height:100%;border-radius:2px;background:var(--accent);animation:vb .55s ease-in-out infinite alternate}
+.vbars i:nth-child(2){animation-delay:.12s}.vbars i:nth-child(3){animation-delay:.05s}.vbars i:nth-child(4){animation-delay:.18s}.vbars i:nth-child(5){animation-delay:.09s}
+.clock{font-size:calc(var(--u)*1.5);font-weight:700}
+.iconbtn{width:calc(var(--u)*3);height:calc(var(--u)*3);border-radius:calc(var(--u)*.8);display:grid;place-items:center;background:var(--card);border:1px solid var(--line)}
+.iconbtn svg{width:56%;height:56%}
+.iconbtn:active{transform:scale(.95)}
 
-*, *::before, *::after { margin:0; padding:0; box-sizing:border-box; }
+/* ---------- colonne ---------- */
+.col{position:relative;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:calc(var(--u)*1);min-height:0;min-width:0;padding:calc(var(--u)*1) calc(var(--u)*1.4)}
+.col-l{border-right:1px solid var(--line)}
+.col-r{border-left:1px solid var(--line);align-items:stretch}
+.cap{font-size:calc(var(--u)*.95);font-weight:700;letter-spacing:.24em;text-transform:uppercase;color:var(--label);text-align:center}
 
-html {
-  /* Root font = 1.3% of viewport width → ~25px on 1920px display */
-  font-size: 1.3vw;
-}
+/* ---------- tachimetro ---------- */
+.gauge{position:relative;width:min(calc(var(--u)*24),100%,62vh);aspect-ratio:1}
+.gauge svg{position:absolute;inset:0;width:100%;height:100%;overflow:visible}
+.g-track{fill:none;stroke:rgba(255,255,255,.1);stroke-width:9;stroke-linecap:round}
+.g-fill{fill:none;stroke:var(--state);stroke-width:9;stroke-linecap:round;stroke-dasharray:0 100;transition:stroke-dasharray .35s ease,stroke .25s;filter:drop-shadow(0 0 4px var(--state))}
+.g-tick{stroke:rgba(255,255,255,.6);stroke-width:1.2}
+.g-tick.maj{stroke:#fff;stroke-width:2.2}
+.g-lbl{fill:#fff;font-family:'Barlow Semi Condensed',sans-serif;font-weight:700;font-size:11px;text-anchor:middle;dominant-baseline:central}
+.g-limit{opacity:0;transform-box:view-box;transform-origin:100px 100px;transition:transform .45s ease,opacity .3s}
+.g-limit .w{stroke:#fff;stroke-width:8;stroke-linecap:round}
+.g-limit .r{stroke:var(--sign-red);stroke-width:5;stroke-linecap:round}
+.g-center{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center}
+.speed{font-size:calc(var(--u)*7.6);font-weight:700;line-height:.95;transition:color .2s,opacity .3s}
+body[data-state="warn"] .speed{color:var(--warn)}
+body[data-state="danger"] .speed{color:var(--danger)}
+.speed.stale{opacity:.4}
+.unit{font-size:calc(var(--u)*1.3);font-weight:700;letter-spacing:.18em;margin-top:calc(var(--u)*.3)}
 
-body {
-  width:100%; height:100%;
-  background: var(--bg);
-  color: var(--text);
-  font-family: 'DM Sans', sans-serif;
-  overflow: hidden;
-  -webkit-font-smoothing: antialiased;
-  user-select: none;
-}
+/* ---------- segnale stradale ---------- */
+.sign{width:min(calc(var(--u)*21),100%,52vh);aspect-ratio:1;border-radius:50%;display:grid;place-items:center;background:#fff;border:calc(var(--u)*.35) solid #fff;box-shadow:inset 0 0 0 calc(var(--u)*2.1) var(--sign-red),0 calc(var(--u)*.6) calc(var(--u)*2.4) rgba(0,0,0,.6),0 0 0 1px rgba(255,255,255,.2)}
+.sign .n{font-family:'Barlow Semi Condensed',sans-serif;font-weight:700;color:#111;font-size:calc(var(--u)*8.8);line-height:1;letter-spacing:-.02em;transform:translateY(.03em)}
+.sign.three .n{font-size:calc(var(--u)*7)}
+.sign.unknown{background:#111924;border-color:#111924;box-shadow:inset 0 0 0 calc(var(--u)*.3) rgba(255,255,255,.55),0 0 0 1px rgba(255,255,255,.1)}
+.sign.unknown .n{color:#fff;font-size:calc(var(--u)*6)}
+.sign.pop{animation:pop .45s cubic-bezier(.2,1.3,.4,1)}
+.road{font-size:calc(var(--u)*1.45);font-weight:700;text-align:center;max-width:100%;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.src{font-size:calc(var(--u)*.95);font-weight:600;letter-spacing:.04em;padding:calc(var(--u)*.35) calc(var(--u)*1);border-radius:999px;border:1px solid var(--line);background:var(--card);max-width:100%;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.src.est{color:var(--warn);border-color:rgba(255,197,61,.55)}
 
-/* ═══ SCREEN WRAPPER — fills 100vw × 100vh, locks 21:9 ═══ */
-.screen {
-  width: 100vw;
-  height: 100vh;
-  position: relative;
-  display: grid;
-  grid-template-columns: var(--col-w) 1fr var(--col-w);
-  grid-template-rows: 1fr;
-  background: var(--bg);
-  overflow: hidden;
-}
-.screen::after {
-  content:''; position:absolute; inset:0; pointer-events:none; z-index:0;
-  background-image:
-    linear-gradient(rgba(255,255,255,0.022) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(255,255,255,0.022) 1px, transparent 1px);
-  background-size: 3.5vw 3.5vw;
-}
+/* ---------- schede a destra ---------- */
+.cards{display:flex;flex-direction:column;gap:calc(var(--u)*.75);width:100%}
+.card{--bar:rgba(255,255,255,.35);position:relative;display:flex;align-items:center;gap:calc(var(--u)*1);width:100%;background:var(--card);border:1px solid var(--line);border-radius:calc(var(--u)*1);padding:calc(var(--u)*.8) calc(var(--u)*1.2) calc(var(--u)*.8) calc(var(--u)*1.5);min-height:calc(var(--u)*4.4);text-align:left;overflow:hidden}
+.card::before{content:'';position:absolute;left:0;top:0;bottom:0;width:calc(var(--u)*.3);background:var(--bar);transition:background .25s}
+.c-body{flex:1;min-width:0}
+.c-lbl{font-size:calc(var(--u)*.85);font-weight:700;letter-spacing:.16em;text-transform:uppercase;color:var(--label)}
+.c-val{font-size:calc(var(--u)*1.6);font-weight:700;line-height:1.15;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.c-sub{font-size:calc(var(--u)*.95);font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#cDelta{--bar:var(--state)}
+#cDelta .c-val{font-size:calc(var(--u)*2.3)}
+body[data-state="danger"] #cDelta .c-val{color:var(--danger)}
+body[data-state="warn"] #cDelta .c-val{color:var(--warn)}
+.dot{width:calc(var(--u)*.9);height:calc(var(--u)*.9);border-radius:50%;background:rgba(255,255,255,.45);flex:none}
+.dot.ok{background:var(--ok);box-shadow:0 0 calc(var(--u)*.5) var(--ok)}
+.dot.wait{background:var(--warn);animation:blink .9s ease-in-out infinite}
+.dot.err{background:var(--danger);box-shadow:0 0 calc(var(--u)*.5) var(--danger)}
+.ico{width:calc(var(--u)*2.6);height:calc(var(--u)*2.6);border-radius:calc(var(--u)*.7);display:grid;place-items:center;background:rgba(255,255,255,.08);flex:none}
+.ico svg{width:58%;height:58%}
+.tgl .i-on{display:none}
+.tgl.on .i-on{display:block}
+.tgl.on .i-off{display:none}
+.tgl.on{--bar:var(--ok)}
+.tgl.on .ico{background:rgba(47,227,154,.15);color:var(--ok)}
+.tgl .c-val{font-size:calc(var(--u)*1.35)}
+.tgl.on .c-val{color:var(--ok)}
+.switch{width:calc(var(--u)*3.6);height:calc(var(--u)*2);border-radius:999px;background:rgba(255,255,255,.25);position:relative;flex:none;transition:background .2s}
+.switch::after{content:'';position:absolute;top:calc(var(--u)*.2);left:calc(var(--u)*.2);width:calc(var(--u)*1.6);height:calc(var(--u)*1.6);border-radius:50%;background:#fff;box-shadow:0 1px 4px rgba(0,0,0,.4);transition:transform .2s}
+.tgl.on .switch{background:var(--ok)}
+.tgl.on .switch::after{transform:translateX(calc(var(--u)*1.6))}
+.card.tgl:active{transform:scale(.985)}
 
-/* ─── LEFT: SPEED ─── */
-.col-speed {
-  display:flex; flex-direction:column; align-items:center; justify-content:center;
-  padding: 0 1.8vw; position:relative; z-index:2;
-  border-right: 1px solid var(--line);
-  gap: 0;
-}
+/* ---------- barra demo ---------- */
+.demo{grid-column:1/-1;display:none;align-items:center;gap:calc(var(--u)*.7);padding:calc(var(--u)*.6) calc(var(--u)*1.4);border-top:1px solid var(--line);background:rgba(10,14,20,.96)}
+body.mode-demo .demo{display:flex}
+.dtag{color:var(--warn);font-weight:700;letter-spacing:.18em;font-size:calc(var(--u)*.95);margin-right:calc(var(--u)*.4)}
+.dbtn{min-width:calc(var(--u)*3.4);height:calc(var(--u)*2.9);padding:0 calc(var(--u)*.8);border-radius:calc(var(--u)*.7);background:var(--card-hi);border:1px solid var(--line);font-weight:700;font-size:calc(var(--u)*1.1);white-space:nowrap}
+.dbtn.sel{border-color:#fff;background:#24303f}
+.dbtn:active{transform:scale(.96)}
+.dbtn.go{background:var(--ok);border-color:var(--ok);color:#03130b;padding:0 calc(var(--u)*1.2)}
+.dsep{width:1px;height:calc(var(--u)*2);background:var(--line);flex:none}
+.drange{flex:1;display:flex;align-items:center;gap:calc(var(--u)*.7);font-weight:700;font-size:calc(var(--u)*1.05);min-width:0}
+.drange input{flex:1;min-width:0;accent-color:var(--ok);height:calc(var(--u)*2.4)}
+.drange .num{min-width:calc(var(--u)*3);text-align:right;font-size:calc(var(--u)*1.4)}
 
-.speed-tag {
-  font-family:'Syne Mono',monospace;
-  font-size: 0.55rem;
-  letter-spacing: 0.28em;
-  color: var(--muted2);
-  text-transform: uppercase;
-  margin-bottom: 1.2vh;
-}
+/* ---------- cornice di allarme ---------- */
+.alert{position:fixed;inset:0;pointer-events:none;z-index:40;opacity:0;transition:opacity .2s;box-shadow:inset 0 0 0 calc(var(--u)*.45) var(--danger),inset 0 0 calc(var(--u)*7) rgba(255,59,85,.35)}
+body.over .alert{opacity:1;animation:pulse 1s ease-in-out infinite}
 
-.speedometer {
-  position: relative;
-  width: 16vw;
-  max-width: 280px;
-  aspect-ratio: 1;
-  display: flex; align-items:center; justify-content:center;
-}
-.speedometer svg {
-  position:absolute; inset:0; width:100%; height:100%;
-  transform: rotate(-222deg);
-}
-.spd-track { fill:none; stroke:rgba(255,255,255,0.06); stroke-width:5; stroke-linecap:round; }
-.spd-fill  {
-  fill:none; stroke:var(--ok); stroke-width:5; stroke-linecap:round;
-  stroke-dasharray:288; stroke-dashoffset:288;
-  transition: stroke-dashoffset 0.38s cubic-bezier(.4,0,.2,1), stroke 0.38s;
-  filter: drop-shadow(0 0 0.4vw var(--ok));
-}
-.spd-fill.warn   { stroke:var(--warn);   filter:drop-shadow(0 0 0.4vw var(--warn)); }
-.spd-fill.danger { stroke:var(--danger); filter:drop-shadow(0 0 0.4vw var(--danger)); }
+/* ---------- finestre ---------- */
+.ov{position:fixed;inset:0;z-index:100;display:none;align-items:center;justify-content:center;background:rgba(3,5,8,.95);padding:calc(var(--u)*1)}
+.ov.show{display:flex}
+.panel{width:min(calc(var(--u)*66),96vw);max-height:94vh;overflow:auto;background:#0b1118;border:1px solid var(--line);border-radius:calc(var(--u)*1.4);padding:calc(var(--u)*1.8) calc(var(--u)*2.2)}
+.panel.start{width:min(calc(var(--u)*54),96vw);text-align:center}
+.logo{font-size:calc(var(--u)*3.2);font-weight:700;letter-spacing:.24em}
+.logo b{color:var(--ok)}
+.lead{font-size:calc(var(--u)*1.25);font-weight:500;line-height:1.5;margin:calc(var(--u)*1) 0 calc(var(--u)*1.6)}
+.note{font-size:calc(var(--u)*.95);line-height:1.5;margin-top:calc(var(--u)*1.2)}
+.row{display:flex;gap:calc(var(--u)*.9);align-items:center;flex-wrap:wrap}
+.row.center{justify-content:center}
+.btn{height:calc(var(--u)*3.4);padding:0 calc(var(--u)*1.6);border-radius:calc(var(--u)*.9);background:var(--card-hi);border:1px solid var(--line);font-weight:700;font-size:calc(var(--u)*1.15)}
+.btn.primary{background:var(--ok);color:#03130b;border-color:var(--ok)}
+.btn.big{height:calc(var(--u)*4.2);font-size:calc(var(--u)*1.4);padding:0 calc(var(--u)*2.2)}
+.btn.cur{outline:2px solid #fff;outline-offset:2px}
+.btn:active{transform:scale(.97)}
+.p-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:calc(var(--u)*1.2)}
+.p-title{font-size:calc(var(--u)*1.8);font-weight:700}
+.p-grid{display:grid;grid-template-columns:1fr 1fr;gap:calc(var(--u)*1.2)}
+.p-sec{background:var(--card);border:1px solid var(--line);border-radius:calc(var(--u)*1);padding:calc(var(--u)*1.1) calc(var(--u)*1.3);display:flex;flex-direction:column;gap:calc(var(--u)*.8)}
+.p-lbl{font-size:calc(var(--u)*.9);font-weight:700;letter-spacing:.14em;text-transform:uppercase}
+.p-sec select,.p-sec input{width:100%;height:calc(var(--u)*3);border-radius:calc(var(--u)*.7);background:#070b11;border:1px solid var(--line);padding:0 calc(var(--u)*.9);font-size:calc(var(--u)*1.05);font-weight:600;outline:none}
+.p-sec select option{background:#0b1118;color:#fff}
+.p-note{font-size:calc(var(--u)*.9);line-height:1.45}
+.p-status{font-size:calc(var(--u)*.95);font-weight:600}
+.opt{display:flex;align-items:center;gap:calc(var(--u)*1);text-align:left;width:100%}
+.opt-t{flex:1;font-size:calc(var(--u)*1.05);font-weight:600;line-height:1.35}
+.opt-t small{display:block;font-size:calc(var(--u)*.85);font-weight:500;margin-top:2px}
 
-.spd-inner { display:flex; flex-direction:column; align-items:center; z-index:1; }
-.spd-num {
-  font-family:'Space Grotesk',sans-serif; font-weight:700;
-  font-size: 4.8vw;
-  line-height:1; letter-spacing:-0.05em; color:var(--text);
-  transition: color 0.3s;
-}
-.spd-num.warn   { color:var(--warn); }
-.spd-num.danger { color:var(--danger); animation: flash-num 0.75s ease-in-out infinite; }
-.spd-unit {
-  font-size: 0.7rem; font-weight:500; color:var(--muted);
-  letter-spacing:0.22em; text-transform:uppercase; margin-top:0.3vh;
-}
+.toast{position:fixed;left:50%;bottom:calc(var(--u)*1.6);transform:translate(-50%,250%);z-index:200;max-width:80vw;background:#1b2431;border:1px solid var(--line);border-radius:calc(var(--u)*.8);padding:calc(var(--u)*.8) calc(var(--u)*1.4);font-size:calc(var(--u)*1.1);font-weight:600;transition:transform .3s;text-align:center}
+.toast.show{transform:translate(-50%,0)}
 
-/* delta pill */
-.delta-pill {
-  margin-top: 1.5vh;
-  display:flex; align-items:center; gap:0.5vw;
-  background:var(--bg3); border:1px solid var(--line);
-  border-radius:100px; padding:0.4vh 1.1vw 0.4vh 0.7vw;
-}
-.dp-dot {
-  width:0.55vw; height:0.55vw; min-width:6px; min-height:6px;
-  border-radius:50%; background:var(--ok); flex-shrink:0; transition:background 0.3s;
-}
-.dp-dot.warn   { background:var(--warn); }
-.dp-dot.danger { background:var(--danger); box-shadow:0 0 0.3vw var(--danger); }
-.dp-txt {
-  font-family:'Space Grotesk',sans-serif; font-size:0.72rem; font-weight:500;
-  color:var(--muted); white-space:nowrap; text-align:center;
-}
-
-/* ─── CENTER ─── */
-.col-center {
-  display:flex; flex-direction:column; align-items:center; justify-content:center;
-  position:relative; z-index:2; padding:0 1.5vw; gap:0;
-}
-
-.hbar {
-  position:absolute; top:0; left:0; right:0; height:var(--hbar-h);
-  display:flex; align-items:center; justify-content:space-between;
-  padding:0 1.5vw; border-bottom:1px solid var(--line);
-  background:rgba(7,8,11,0.85); backdrop-filter:blur(8px);
-}
-.hbar-brand {
-  font-family:'Syne Mono',monospace; font-size:0.6rem;
-  letter-spacing:0.32em; color:var(--muted2); text-transform:uppercase;
-}
-.hbar-right { display:flex; align-items:center; gap:1.2vw; }
-.voice-bars { display:flex; align-items:center; gap:2px; opacity:0; transition:opacity 0.3s; }
-.voice-bars.on { opacity:1; }
-.vb { width:3px; border-radius:2px; background:var(--accent); animation:vbw 0.5s ease-in-out infinite alternate; }
-.vb:nth-child(1){height:5px;  animation-delay:0s;}
-.vb:nth-child(2){height:10px; animation-delay:0.07s;}
-.vb:nth-child(3){height:16px; animation-delay:0.04s;}
-.vb:nth-child(4){height:10px; animation-delay:0.11s;}
-.vb:nth-child(5){height:5px;  animation-delay:0.06s;}
-.vbadge {
-  font-family:'Syne Mono',monospace; font-size:0.5rem; color:var(--muted2);
-  letter-spacing:0.07em; padding:0.3vh 0.6vw;
-  background:rgba(255,255,255,0.03); border:1px solid var(--line);
-  border-radius:4px; white-space:nowrap;
-}
-
-/* sign */
-.sign-wrap { display:flex; flex-direction:column; align-items:center; gap:1.8vh; }
-.sign-outer {
-  width: 14vw;
-  max-width: 240px;
-  aspect-ratio:1; border-radius:50%;
-  background:#fff; border: 1.1vw solid #d41e1e;
-  display:flex; align-items:center; justify-content:center; flex-direction:column;
-  box-shadow: 0 0 0 0.2vw rgba(212,30,30,0.1), 0 0.6vw 2.5vw rgba(0,0,0,0.5), 0 0 2.5vw rgba(212,30,30,0.08);
-  transition: box-shadow 0.5s;
-}
-.sign-outer.glow {
-  box-shadow: 0 0 0 0.2vw rgba(212,30,30,0.28),
-              0 0.6vw 2.5vw rgba(0,0,0,0.5),
-              0 0 4vw rgba(212,30,30,0.32),
-              0 0 7vw rgba(212,30,30,0.12);
-}
-.sign-outer.empty {
-  background:transparent; border:2px dashed rgba(255,255,255,0.09); box-shadow:none;
-}
-.sign-num {
-  font-family:'Space Grotesk',sans-serif; font-weight:700;
-  font-size: 3.8vw; color:#111; line-height:1; letter-spacing:-0.03em;
-}
-.sign-kmh {
-  font-family:'DM Sans',sans-serif; font-size:0.75rem;
-  color:#555; font-weight:600; letter-spacing:0.07em; margin-top:0.2vh;
-}
-.sign-empty-ico { width:36%; opacity:0.16; }
-
-@keyframes sign-pop {
-  0%  { transform:scale(0.5) translateY(12px); opacity:0; }
-  72% { transform:scale(1.07); opacity:1; }
-  100%{ transform:scale(1) translateY(0); opacity:1; }
-}
-.sign-outer.pop { animation:sign-pop 0.44s cubic-bezier(.22,1.2,.36,1) forwards; }
-
-.ann {
-  font-family:'DM Sans',sans-serif; font-size:0.9rem;
-  font-weight:500; color:var(--muted); text-align:center; min-height:1.4em; transition:color 0.3s;
-}
-.ann.lit { color:var(--text); }
-
-/* coords bar */
-.cbar {
-  position:absolute; bottom:0; left:0; right:0; height:var(--cbar-h);
-  display:flex; align-items:center; justify-content:center;
-  border-top:1px solid var(--line); background:rgba(7,8,11,0.75);
-}
-.cbar-txt {
-  font-family:'Syne Mono',monospace; font-size:0.55rem;
-  color:var(--muted2); letter-spacing:0.1em;
-}
-
-/* ─── RIGHT: INFO ─── */
-.col-info {
-  display:flex; flex-direction:column; justify-content:center;
-  padding: 1vh 1.3vw 1vh 1.1vw; gap:1vh;
-  border-left:1px solid var(--line); position:relative; z-index:2;
-}
-
-.icard {
-  background:var(--bg3); border:1px solid var(--line); border-radius:calc(var(--r)*1.1);
-  padding:1vh 1vw; display:flex; align-items:center; gap:0.8vw;
-  position:relative; overflow:hidden;
-}
-.icard::before {
-  content:''; position:absolute; left:0; top:0; bottom:0; width:2px;
-  border-radius:2px 0 0 2px; background:var(--accent); transition:background 0.3s;
-}
-.icard.ok-b::before    { background:var(--ok); }
-.icard.warn-b::before  { background:var(--warn); }
-.icard.danger-b::before{ background:var(--danger); }
-
-.icard-ico {
-  width:2.2vw; min-width:28px; height:2.2vw; min-height:28px;
-  flex-shrink:0; display:flex; align-items:center; justify-content:center;
-  border-radius:0.6vw; background:rgba(255,255,255,0.04); font-size:0.85rem;
-}
-.icard-body { flex:1; min-width:0; }
-.icard-lbl {
-  font-size:0.52rem; letter-spacing:0.18em; color:var(--muted2);
-  text-transform:uppercase; line-height:1; margin-bottom:0.3vh;
-}
-.icard-val {
-  font-family:'Space Grotesk',sans-serif; font-size:0.9rem; font-weight:600;
-  color:var(--text); white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
-}
-
-/* ── BEEP BUTTON ── */
-.beep-btn {
-  background:var(--bg3); border:1px solid var(--line); border-radius:calc(var(--r)*1.1);
-  padding:1vh 1vw; display:flex; align-items:center; gap:0.8vw;
-  cursor:pointer; transition:all 0.22s; position:relative; overflow:hidden; outline:none;
-}
-.beep-btn::before {
-  content:''; position:absolute; left:0; top:0; bottom:0; width:2px;
-  border-radius:2px 0 0 2px; background:rgba(255,255,255,0.12); transition:background 0.3s;
-}
-.beep-btn.on::before { background:var(--ok); }
-.beep-btn:hover { border-color:rgba(255,255,255,0.12); }
-.beep-btn:active { transform:scale(0.975); }
-
-.beep-ico-wrap {
-  width:2.2vw; min-width:28px; height:2.2vw; min-height:28px;
-  flex-shrink:0; display:flex; align-items:center; justify-content:center;
-  border-radius:0.6vw; background:rgba(255,255,255,0.04); transition:background 0.3s;
-}
-.beep-btn.on .beep-ico-wrap { background:rgba(61,232,160,0.11); }
-.beep-svg { width:1.1vw; min-width:15px; height:1.1vw; min-height:15px; }
-
-.beep-body { flex:1; min-width:0; }
-.beep-lbl {
-  font-size:0.52rem; letter-spacing:0.18em; color:var(--muted2);
-  text-transform:uppercase; line-height:1; margin-bottom:0.3vh;
-}
-.beep-state {
-  font-family:'Space Grotesk',sans-serif; font-size:0.88rem;
-  font-weight:600; color:var(--muted); transition:color 0.3s;
-}
-.beep-btn.on .beep-state { color:var(--ok); }
-
-/* toggle switch */
-.tog {
-  width:2.6vw; min-width:34px; height:1.4vw; min-height:18px;
-  flex-shrink:0; background:rgba(255,255,255,0.1);
-  border-radius:100px; position:relative; transition:background 0.28s;
-}
-.beep-btn.on .tog { background:var(--ok); }
-.tog::after {
-  content:''; position:absolute; top:2px; left:2px;
-  width:calc(1.4vw - 4px); min-width:14px;
-  height:calc(1.4vw - 4px); min-height:14px;
-  border-radius:50%; background:#fff; box-shadow:0 1px 4px rgba(0,0,0,0.35);
-  transition:transform 0.28s cubic-bezier(.4,0,.2,1);
-}
-.beep-btn.on .tog::after { transform:translateX(calc(1.2vw)); }
-
-/* gps mini row */
-.gps-mini { display:flex; align-items:center; gap:0.5vw; padding:0.2vh 0 0 0.2vw; }
-.gps-dot  {
-  width:0.45vw; min-width:6px; height:0.45vw; min-height:6px;
-  border-radius:50%; background:var(--ok); box-shadow:0 0 0.4vw var(--ok);
-}
-.gps-dot.searching {
-  background:var(--warn); box-shadow:0 0 0.4vw var(--warn);
-  animation:dotblink 0.6s ease-in-out infinite;
-}
-.gps-dot.error { background:var(--danger); box-shadow:0 0 0.4vw var(--danger); }
-.gps-lbl { font-size:0.52rem; color:var(--muted2); letter-spacing:0.1em; }
-
-/* alert ring */
-.alert-ring {
-  position:absolute; inset:0; pointer-events:none; z-index:50;
-  opacity:0; transition:opacity 0.3s;
-  box-shadow:inset 0 0 0 3px var(--danger), inset 0 0 4vw rgba(255,61,90,0.07);
-}
-.alert-ring.on { opacity:1; animation:ringpulse 0.95s ease-in-out infinite; }
-
-/* DEMO BAR */
-.demo-bar {
-  position:absolute; bottom:4.5vh; left:50%; transform:translateX(-50%);
-  display:flex; gap:0.3vw; align-items:center; z-index:200;
-  background:rgba(7,8,11,0.9); border:1px solid var(--line);
-  border-radius:100px; padding:0.5vh 0.7vw; backdrop-filter:blur(10px);
-}
-.dbtn {
-  font-family:'Space Grotesk',sans-serif; font-size:0.65rem; font-weight:600;
-  padding:0.5vh 0.9vw; border-radius:100px;
-  background:transparent; border:1px solid transparent;
-  color:var(--muted); cursor:pointer; transition:all 0.18s; letter-spacing:0.04em;
-}
-.dbtn:hover { background:var(--bg3); border-color:var(--line); color:var(--text); }
-.dsep { width:1px; height:1.4vh; background:var(--line); }
-
-/* PERMISSION OVERLAY */
-.perm {
-  position:absolute; inset:0;
-  background:rgba(7,8,11,0.97);
-  display:flex; flex-direction:column; align-items:center; justify-content:center;
-  gap:2vh; z-index:500;
-}
-.perm-logo {
-  font-family:'Syne Mono',monospace; font-size:2rem;
-  letter-spacing:0.28em; color:var(--text);
-}
-.perm-logo em { font-style:normal; color:var(--ok); }
-.perm-sub {
-  font-size:0.78rem; color:var(--muted);
-  text-align:center; max-width:38vw; line-height:1.75;
-}
-.perm-card {
-  background:var(--bg3); border:1px solid var(--line); border-radius:1vw;
-  padding:1.5vh 1.5vw; width:38vw; max-width:560px;
-  display:flex; flex-direction:column; gap:1vh;
-}
-.perm-ctitle {
-  font-family:'Syne Mono',monospace; font-size:0.55rem;
-  letter-spacing:0.2em; color:var(--muted2); text-transform:uppercase;
-}
-.perm-cdesc { font-size:0.7rem; color:var(--muted); line-height:1.65; }
-.perm-cdesc strong { color:var(--accent); }
-.perm-inp {
-  width:100%; background:rgba(255,255,255,0.04); border:1px solid var(--line);
-  border-radius:0.6vw; color:var(--text); font-family:'Syne Mono',monospace;
-  font-size:0.7rem; padding:1vh 1vw; outline:none; letter-spacing:0.04em;
-}
-.perm-inp::placeholder { color:var(--muted2); }
-.perm-inp:focus { border-color:rgba(255,255,255,0.18); }
-.perm-btns { display:flex; gap:0.8vw; width:38vw; max-width:560px; }
-.perm-btn {
-  flex:1; font-family:'Space Grotesk',sans-serif; font-size:0.78rem; font-weight:600;
-  letter-spacing:0.08em; padding:1.2vh 1.5vw;
-  border-radius:0.7vw; border:none; cursor:pointer; transition:all 0.2s;
-}
-.perm-btn.p { background:var(--ok); color:#07080b; }
-.perm-btn.p:hover { filter:brightness(1.1); transform:translateY(-1px); }
-.perm-btn.s { background:var(--bg3); border:1px solid var(--line); color:var(--muted); }
-.perm-btn.s:hover { border-color:rgba(255,255,255,0.15); color:var(--text); }
-
-/* KEYFRAMES */
-@keyframes flash-num { 0%,100%{opacity:1} 50%{opacity:0.52} }
-@keyframes vbw  { from{transform:scaleY(0.3)} to{transform:scaleY(1)} }
-@keyframes dotblink { 0%,100%{opacity:1} 50%{opacity:0.18} }
-@keyframes ringpulse {
-  0%,100%{ box-shadow:inset 0 0 0 3px var(--danger), inset 0 0 4vw rgba(255,61,90,0.07); }
-  50%    { box-shadow:inset 0 0 0 3px var(--danger), inset 0 0 6vw rgba(255,61,90,0.18); }
-}
-
-/* GPS switch button inside demo bar */
-.dbtn-gps {
-  color: var(--ok);
-  border-color: rgba(61,232,160,0.25) !important;
-  background: rgba(61,232,160,0.07) !important;
-}
-.dbtn-gps:hover {
-  background: rgba(61,232,160,0.15) !important;
-  border-color: rgba(61,232,160,0.5) !important;
-  color: var(--ok) !important;
-}
-
-@keyframes beep-flash {
-  0%   { box-shadow:inset 0 0 0 4px var(--danger), inset 0 0 8vw rgba(255,61,90,0.22); opacity:1; }
-  100% { box-shadow:inset 0 0 0 3px var(--danger), inset 0 0 4vw rgba(255,61,90,0.07); opacity:1; }
-}
+@keyframes vb{from{transform:scaleY(.25)}to{transform:scaleY(1)}}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:.25}}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.55}}
+@keyframes pop{0%{transform:scale(.6);opacity:.3}70%{transform:scale(1.06);opacity:1}100%{transform:scale(1)}}
 </style>
 </head>
-<body>
-<div class="screen" id="screen">
+<body data-state="ok">
 
-  <div class="alert-ring" id="alertRing"></div>
+<div class="app">
+  <header class="top">
+    <div class="brand">SPEED<b>GUARD</b></div>
+    <div class="chip" id="modeChip">—</div>
+    <div class="spacer"></div>
+    <div class="vbars" id="vbars" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i></div>
+    <div class="clock num" id="clock">--:--</div>
+    <button class="iconbtn" id="btnSettings" aria-label="Impostazioni">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+    </button>
+  </header>
 
-  <!-- LEFT: SPEED -->
-  <div class="col-speed">
-    <div class="speed-tag">Velocità</div>
-    <div class="speedometer">
-      <svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
-        <circle class="spd-track" cx="50" cy="50" r="45" stroke-dasharray="288" stroke-dashoffset="0"/>
-        <circle class="spd-fill"  cx="50" cy="50" r="45" id="spdArc"/>
+  <!-- Velocità -->
+  <section class="col col-l">
+    <div class="cap">Velocità</div>
+    <div class="gauge">
+      <svg viewBox="0 0 200 200" aria-hidden="true">
+        <path id="gTrack" class="g-track"/>
+        <path id="gFill" class="g-fill" pathLength="100"/>
+        <g id="gTicks"></g>
+        <g id="gLimit" class="g-limit"><line class="w" x1="100" y1="3" x2="100" y2="23"/><line class="r" x1="100" y1="3" x2="100" y2="23"/></g>
       </svg>
-      <div class="spd-inner">
-        <div class="spd-num" id="spdNum">0</div>
-        <div class="spd-unit">km/h</div>
+      <div class="g-center"><div class="speed num" id="speed">0</div><div class="unit">km/h</div></div>
+    </div>
+  </section>
+
+  <!-- Segnale -->
+  <section class="col col-c">
+    <div class="cap">Limite di velocità</div>
+    <div class="sign unknown" id="sign"><span class="n num" id="signNum">–</span></div>
+    <div class="road" id="road">&nbsp;</div>
+    <div class="src" id="src">In attesa di avvio</div>
+  </section>
+
+  <!-- Stato -->
+  <section class="col col-r">
+    <div class="cards">
+      <div class="card" id="cDelta">
+        <div class="c-body"><div class="c-lbl" id="deltaLbl">Margine</div><div class="c-val num" id="deltaVal">—</div></div>
       </div>
-    </div>
-    <div class="delta-pill" id="deltaPill">
-      <div class="dp-dot" id="dpDot"></div>
-      <div class="dp-txt" id="dpTxt">Nessun limite</div>
-    </div>
-  </div>
-
-  <!-- CENTER: SIGN -->
-  <div class="col-center">
-    <div class="hbar">
-      <div class="hbar-brand">SpeedGuard</div>
-      <div class="hbar-right">
-        <div class="voice-bars" id="voiceBars">
-          <div class="vb"></div><div class="vb"></div><div class="vb"></div><div class="vb"></div><div class="vb"></div>
-        </div>
-        <div class="vbadge" id="vbadge">Inizializzazione…</div>
+      <div class="card" id="cGps">
+        <span class="dot"></span>
+        <div class="c-body"><div class="c-lbl">GPS</div><div class="c-val">—</div><div class="c-sub">&nbsp;</div></div>
       </div>
-    </div>
-
-    <div class="sign-wrap">
-      <div class="sign-outer empty" id="signOuter">
-        <svg class="sign-empty-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-          <circle cx="12" cy="12" r="10"/><line x1="6" y1="6" x2="18" y2="18"/>
-        </svg>
+      <div class="card" id="cData">
+        <span class="dot"></span>
+        <div class="c-body"><div class="c-lbl">Dati stradali</div><div class="c-val">—</div><div class="c-sub">&nbsp;</div></div>
       </div>
-      <div class="ann" id="annTxt">In attesa di segnale GPS…</div>
+      <button class="card tgl" id="btnBeep">
+        <span class="ico">
+          <svg class="i-on" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M15.5 8.5a5 5 0 0 1 0 7"/><path d="M19 5a10 10 0 0 1 0 14"/></svg>
+          <svg class="i-off" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><line x1="23" y1="9" x2="17" y2="15"/><line x1="17" y1="9" x2="23" y2="15"/></svg>
+        </span>
+        <div class="c-body"><div class="c-lbl">Allarme acustico</div><div class="c-val" id="beepVal">Attivo</div></div>
+        <span class="switch"></span>
+      </button>
+      <button class="card tgl" id="btnVoice">
+        <span class="ico">
+          <svg class="i-on" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="22"/></svg>
+          <svg class="i-off" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="22"/><line x1="3" y1="3" x2="21" y2="21"/></svg>
+        </span>
+        <div class="c-body"><div class="c-lbl">Annunci vocali</div><div class="c-val" id="voiceVal">Attivi</div></div>
+        <span class="switch"></span>
+      </button>
     </div>
+  </section>
 
-    <div class="cbar"><div class="cbar-txt" id="coordsTxt">– ° N &nbsp;|&nbsp; – ° E</div></div>
-  </div>
-
-  <!-- RIGHT: INFO -->
-  <div class="col-info">
-
-    <div class="icard ok-b" id="icLimit">
-      <div class="icard-ico">⚑</div>
-      <div class="icard-body">
-        <div class="icard-lbl">Limite attuale</div>
-        <div class="icard-val" id="icLimitVal">– km/h</div>
-      </div>
-    </div>
-
-    <div class="icard" id="icDelta">
-      <div class="icard-ico" id="icDeltaIco">↕</div>
-      <div class="icard-body">
-        <div class="icard-lbl" id="icDeltaLbl">Margine</div>
-        <div class="icard-val" id="icDeltaVal">–</div>
-      </div>
-    </div>
-
-    <div class="icard" id="icGps">
-      <div class="icard-ico">◎</div>
-      <div class="icard-body">
-        <div class="icard-lbl">GPS</div>
-        <div class="icard-val" id="gpsVal">Ricerca…</div>
-      </div>
-      <div class="gps-dot searching" id="gpsDot" style="flex-shrink:0;margin-left:auto;"></div>
-    </div>
-
-    <!-- BEEP BUTTON -->
-    <button class="beep-btn on" id="beepBtn" onclick="toggleBeep()">
-      <div class="beep-ico-wrap">
-        <svg class="beep-svg" id="bsvgOn" viewBox="0 0 24 24" fill="none" stroke="var(--ok)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-          <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/>
-          <path d="M19.07 4.93a10 10 0 0 1 0 14.14"/>
-          <path d="M15.54 8.46a5 5 0 0 1 0 7.07"/>
-        </svg>
-        <svg class="beep-svg" id="bsvgOff" style="display:none" viewBox="0 0 24 24" fill="none" stroke="var(--muted)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-          <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/>
-          <line x1="23" y1="9" x2="17" y2="15"/><line x1="17" y1="9" x2="23" y2="15"/>
-        </svg>
-      </div>
-      <div class="beep-body">
-        <div class="beep-lbl">Allarme acustico</div>
-        <div class="beep-state" id="beepStateTxt">Attivo</div>
-      </div>
-      <div class="tog" id="beepTog"></div>
-    </button>
-
-    <div class="gps-mini">
-      <div class="gps-dot" style="opacity:0.45;box-shadow:none;"></div>
-      <span class="gps-lbl" id="gpsAccTxt">Precisione: –</span>
-    </div>
-
-  </div>
-
-  <!-- DEMO BAR -->
-  <div class="demo-bar" id="demoBar" style="display:none;">
-    <button class="dbtn" onclick="simulateLimit(30)">30</button>
-    <button class="dbtn" onclick="simulateLimit(50)">50</button>
-    <button class="dbtn" onclick="simulateLimit(70)">70</button>
-    <div class="dsep"></div>
-    <button class="dbtn" onclick="simulateLimit(90)">90</button>
-    <button class="dbtn" onclick="simulateLimit(110)">110</button>
-    <button class="dbtn" onclick="simulateLimit(130)">130</button>
-    <div class="dsep"></div>
-    <button class="dbtn" onclick="simulateLimit(null)" style="font-size:0.6em;">∅ Nessun</button>
-    <div class="dsep"></div>
-    <button class="dbtn" id="simSpeedBtn" onclick="toggleSimSpeed()">▶ Velocità</button>
-    <div class="dsep"></div>
-    <button class="dbtn dbtn-gps" onclick="switchToGPS()" title="Passa alla modalità GPS reale">
-      ◎ Attiva GPS
-    </button>
-  </div>
-
-  <!-- PERMISSION -->
-  <div class="perm" id="permEl">
-    <div class="perm-logo">SPEED<em>GUARD</em></div>
-    <div class="perm-sub">Rilevamento limiti di velocità con segnalazione vocale e allarme acustico personalizzabile.</div>
-    <div class="perm-card">
-      <div class="perm-ctitle">Voce ultra-realistica (opzionale)</div>
-      <div class="perm-cdesc">Inserisci un'API key di <strong>ElevenLabs</strong> per voce italiana neurale quasi umana.<br>Senza key si usa automaticamente Google TTS o la voce migliore del dispositivo.</div>
-      <input class="perm-inp" id="elKey" type="password" placeholder="ElevenLabs API Key (opzionale)…"/>
-    </div>
-    <div class="perm-btns">
-      <button class="perm-btn p" onclick="applyKeyAndGPS()">Attiva GPS</button>
-      <button class="perm-btn s" onclick="applyKeyAndDemo()">Demo</button>
-    </div>
-  </div>
-
+  <!-- Barra demo -->
+  <footer class="demo" id="demo">
+    <span class="dtag">DEMO</span>
+    <button class="dbtn" data-lim="30">30</button>
+    <button class="dbtn" data-lim="50">50</button>
+    <button class="dbtn" data-lim="70">70</button>
+    <button class="dbtn" data-lim="90">90</button>
+    <button class="dbtn" data-lim="110">110</button>
+    <button class="dbtn" data-lim="130">130</button>
+    <button class="dbtn" data-lim="">Nessuno</button>
+    <span class="dsep"></span>
+    <label class="drange">Velocità <input type="range" id="simRange" min="0" max="160" step="1" value="0"><span class="num" id="simVal">0</span></label>
+    <button class="dbtn" id="btnAuto">▶ Simula</button>
+    <span class="dsep"></span>
+    <button class="dbtn go" id="btnToGps">◎ Passa a GPS</button>
+  </footer>
 </div>
 
-<script>
-// ══════════════════
-//  WAKE LOCK — keeps screen on while app is open
-// ══════════════════
-let wakeLock = null;
+<div class="alert" id="alert"></div>
 
-async function requestWakeLock() {
-  if ('wakeLock' in navigator) {
-    try {
-      wakeLock = await navigator.wakeLock.request('screen');
-      wakeLock.addEventListener('release', () => {
-        // Re-acquire if released by browser (e.g. tab hidden then visible again)
-        wakeLock = null;
-      });
-    } catch(e) {
-      console.warn('Wake Lock non disponibile:', e.message);
+<!-- Avvio -->
+<div class="ov show" id="startOv">
+  <div class="panel start">
+    <div class="logo">SPEED<b>GUARD</b></div>
+    <p class="lead">Mostra il limite di velocità della strada che stai percorrendo, lo annuncia a voce e ti avvisa con un segnale acustico quando lo superi.</p>
+    <div class="row center">
+      <button class="btn primary big" id="btnStartGps">◎ Avvia con GPS</button>
+      <button class="btn big" id="btnStartDemo">Modalità demo</button>
+    </div>
+    <p class="note">I limiti provengono dai dati di OpenStreetMap. Le zone già percorse restano salvate sul dispositivo e funzionano anche senza rete.</p>
+  </div>
+</div>
+
+<!-- Impostazioni -->
+<div class="ov" id="setOv">
+  <div class="panel">
+    <div class="p-head"><div class="p-title">Impostazioni</div><button class="btn" id="btnCloseSet">Chiudi</button></div>
+    <div class="p-grid">
+      <div class="p-sec">
+        <div class="p-lbl">Voce degli annunci</div>
+        <select id="voiceSel"></select>
+        <div class="p-status" id="voiceNow">&nbsp;</div>
+        <div class="row"><button class="btn" id="btnTestVoice">▶ Prova voce</button></div>
+        <p class="p-note">Su Android la voce viene dal motore di sintesi del sistema. Se senti una voce femminile: Impostazioni Android › Sistema › Lingue › Output sintesi vocale › Italiano › scegli una voce maschile.</p>
+      </div>
+      <div class="p-sec">
+        <div class="p-lbl">Voce realistica ElevenLabs (facoltativa)</div>
+        <input id="elKey" type="password" placeholder="API key ElevenLabs" autocomplete="off" spellcheck="false">
+        <select id="elVoice"></select>
+        <div class="row"><button class="btn" id="btnElSave">Salva e prepara</button></div>
+        <div class="p-status" id="elStatus">&nbsp;</div>
+      </div>
+      <div class="p-sec">
+        <div class="p-lbl">Limiti</div>
+        <button class="opt tgl" id="btnEst"><span class="opt-t">Usa il limite di legge quando la mappa non lo indica<small>Autostrade 130 · extraurbane principali 110 · strade residenziali 50 · zone urbane 50</small></span><span class="switch"></span></button>
+        <div class="row"><button class="btn" id="btnClearMap">Cancella dati mappa salvati</button></div>
+      </div>
+      <div class="p-sec">
+        <div class="p-lbl">Modalità</div>
+        <div class="row"><button class="btn primary" id="btnModeGps">◎ GPS</button><button class="btn" id="btnModeDemo">Demo</button></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<!-- ==========================================================
+     MOTORE STRADALE (nessun accesso al DOM)
+     Abbina ogni posizione GPS alla strada percorsa usando
+     distanza, direzione di marcia, sensi unici e collegamenti
+     tra i tratti, e anticipa il cambio di limite di ~1,2 s.
+     ========================================================== -->
+<script id="engine">
+var Engine = (function () {
+  'use strict';
+  var D2R = Math.PI / 180, RE = 6371008.8;
+  var TS = 0.02;            // lato di un'area scaricata (gradi, circa 2 km)
+  var CELL = 0.0012;        // cella dell'indice spaziale (circa 110-130 m)
+  var LOOKAHEAD_S = 1.2;    // anticipo per compensare il ritardo del GPS
+  var HYST = 5;             // isteresi (m) per non saltare tra strade vicine
+  var MAXSEG = 2048;
+  var ZONE = { 'IT:urban': 50, 'IT:rural': 90, 'IT:trunk': 110, 'IT:motorway': 130, 'IT:zone30': 30, 'IT:zone20': 20, 'IT:zone10': 10 };
+  var HW_DEFAULT = { motorway: 130, trunk: 110, residential: 50 };
+  var HW_NAME = { motorway: 'Autostrada', motorway_link: 'Svincolo autostradale', trunk: 'Strada extraurbana principale', trunk_link: 'Svincolo', primary: 'Strada principale', primary_link: 'Svincolo', secondary: 'Strada secondaria', secondary_link: 'Svincolo', tertiary: 'Strada locale', tertiary_link: 'Svincolo', unclassified: 'Strada', residential: 'Strada residenziale', living_street: 'Zona residenziale', road: 'Strada' };
+
+  function dist(la1, lo1, la2, lo2) {
+    var dLat = (la2 - la1) * D2R, dLon = (lo2 - lo1) * D2R;
+    var x = Math.sin(dLat / 2) * Math.sin(dLat / 2) + Math.cos(la1 * D2R) * Math.cos(la2 * D2R) * Math.sin(dLon / 2) * Math.sin(dLon / 2);
+    return 2 * RE * Math.asin(Math.min(1, Math.sqrt(x)));
+  }
+  function bearing(la1, lo1, la2, lo2) {
+    var p1 = la1 * D2R, p2 = la2 * D2R, dl = (lo2 - lo1) * D2R;
+    var y = Math.sin(dl) * Math.cos(p2), x = Math.cos(p1) * Math.sin(p2) - Math.sin(p1) * Math.cos(p2) * Math.cos(dl);
+    return (Math.atan2(y, x) / D2R + 360) % 360;
+  }
+  function angDiff(a, b) { var d = Math.abs(a - b) % 360; return d > 180 ? 360 - d : d; }
+
+  function parseSpeed(raw) {
+    if (raw == null) return null;
+    var s = String(raw).trim();
+    if (!s) return null;
+    if (s.indexOf(';') >= 0) s = s.split(';')[0].trim();
+    if (ZONE[s] != null) return ZONE[s];
+    var m = /^(\d+(?:[.,]\d+)?)\s*(mph|km\/h|kmh|kph)?$/i.exec(s);
+    if (!m) return null;
+    var v = parseFloat(m[1].replace(',', '.'));
+    if (m[2] && /mph/i.test(m[2])) v *= 1.609344;
+    v = Math.round(v);
+    return v > 0 && v <= 200 ? v : null;
+  }
+
+  function compactWay(el) {
+    if (!el || el.type !== 'way' || !el.geometry || !el.nodes || el.geometry.length < 2 || el.geometry.length !== el.nodes.length) return null;
+    var t = el.tags || {};
+    if (t.area === 'yes') return null;
+    var g = [];
+    for (var i = 0; i < el.geometry.length; i++) {
+      var p = el.geometry[i];
+      if (!p || typeof p.lat !== 'number' || typeof p.lon !== 'number') return null;
+      g.push(Math.round(p.lat * 1e7) / 1e7, Math.round(p.lon * 1e7) / 1e7);
     }
-  }
-}
-
-// Re-acquire when page becomes visible again (e.g. user switches back)
-document.addEventListener('visibilitychange', () => {
-  if (document.visibilityState === 'visible' && !wakeLock) {
-    requestWakeLock();
-  }
-});
-
-// Request immediately on load
-requestWakeLock();
-
-// ── STATE ──
-let currentLimit    = null;
-let currentSpeed    = 0;
-let beepEnabled     = true;
-let isOverLimit     = false;
-let isSpeaking      = false;   // guard: prevents double-speak on same limit
-let beepCtx         = null;
-let currentAudio    = null;
-let watchId         = null;
-let simRunning      = false;
-let simVal          = 0;
-let simDir          = 1;
-let simInterval     = null;
-let lastLimitCheck  = 0;
-
-const EL_VOICE = 'XB0fDUnXU5powFXDhCwa';
-const EL_KEY   = '';
-
-// ── DOM ──
-const spdNum    = document.getElementById('spdNum');
-const spdArc    = document.getElementById('spdArc');
-const dpDot     = document.getElementById('dpDot');
-const dpTxt     = document.getElementById('dpTxt');
-const signOuter = document.getElementById('signOuter');
-const annTxt    = document.getElementById('annTxt');
-const voiceBars = document.getElementById('voiceBars');
-const vbadge    = document.getElementById('vbadge');
-const coordsTxt = document.getElementById('coordsTxt');
-const icLimitVal= document.getElementById('icLimitVal');
-const icLimit   = document.getElementById('icLimit');
-const icDelta   = document.getElementById('icDelta');
-const icDeltaLbl= document.getElementById('icDeltaLbl');
-const icDeltaVal= document.getElementById('icDeltaVal');
-const icDeltaIco= document.getElementById('icDeltaIco');
-const gpsVal    = document.getElementById('gpsVal');
-const gpsDot    = document.getElementById('gpsDot');
-const gpsAccTxt = document.getElementById('gpsAccTxt');
-const alertRing = document.getElementById('alertRing');
-const beepBtn   = document.getElementById('beepBtn');
-const bsvgOn    = document.getElementById('bsvgOn');
-const bsvgOff   = document.getElementById('bsvgOff');
-const beepStateTxt = document.getElementById('beepStateTxt');
-const permEl    = document.getElementById('permEl');
-
-// ══════════════════
-//  BEEP TOGGLE
-// ══════════════════
-function toggleBeep() {
-  beepEnabled = !beepEnabled;
-  beepBtn.classList.toggle('on', beepEnabled);
-  beepStateTxt.textContent = beepEnabled ? 'Attivo' : 'Disattivato';
-  bsvgOn.style.display  = beepEnabled ? '' : 'none';
-  bsvgOff.style.display = beepEnabled ? 'none' : '';
-  if (!beepEnabled) { /* nothing to stop, beep was one-shot */ }
-  // Note: re-enabling won't retroactively beep; next speed crossing will trigger it
-}
-
-// ══════════════════
-//  WEB AUDIO BEEP
-// ══════════════════
-function getCtx() {
-  if (!beepCtx) beepCtx = new (window.AudioContext || window.webkitAudioContext)();
-  return beepCtx;
-}
-function playBeep(freq, dur, vol) {
-  try {
-    const ctx  = getCtx();
-    const osc  = ctx.createOscillator();
-    const gain = ctx.createGain();
-    osc.connect(gain); gain.connect(ctx.destination);
-    osc.type = 'sine';
-    osc.frequency.setValueAtTime(freq, ctx.currentTime);
-    gain.gain.setValueAtTime(0, ctx.currentTime);
-    gain.gain.linearRampToValueAtTime(vol, ctx.currentTime + 0.012);
-    gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + dur);
-    osc.start(ctx.currentTime);
-    osc.stop(ctx.currentTime + dur + 0.02);
-  } catch(e) {}
-}
-function alarmBeep() {
-  // Double-pip — fires once, does not repeat
-  playBeep(980, 0.11, 0.5);
-  setTimeout(() => playBeep(980, 0.11, 0.5), 175);
-}
-function triggerBeepOnce() {
-  // Called only on the transition from under→over limit
-  alarmBeep();
-}
-// Kept for compatibility (toggle-off path still calls this)
-function stopBeepLoop() { /* nothing to stop — single-shot beep */ }
-
-// ══════════════════
-//  SPEED UPDATE
-// ══════════════════
-function updateSpeed(kmh) {
-  currentSpeed = Math.round(Math.max(0, kmh));
-  spdNum.textContent = currentSpeed;
-
-  // arc
-  const pct  = Math.min(currentSpeed / 180, 1);
-  spdArc.style.strokeDashoffset = 288 - pct * 288;
-
-  const over = currentLimit !== null && currentSpeed > currentLimit;
-  const near = currentLimit !== null && !over && currentSpeed >= currentLimit * 0.88;
-
-  spdArc.className = 'spd-fill' + (over ? ' danger' : near ? ' warn' : '');
-  spdNum.className = 'spd-num'  + (over ? ' danger' : near ? ' warn' : '');
-  alertRing.classList.toggle('on', over);
-
-  // delta
-  if (currentLimit !== null) {
-    const d = currentLimit - currentSpeed;
-    dpDot.className   = 'dp-dot' + (d < 0 ? ' danger' : d < currentLimit * 0.12 ? ' warn' : '');
-    dpTxt.textContent = d >= 0 ? `+${d} km/h di margine` : `${Math.abs(d)} km/h in eccesso`;
-    icDeltaVal.textContent  = (d >= 0 ? '+' : '') + d + ' km/h';
-    icDeltaLbl.textContent  = d < 0 ? '⚠ Eccesso velocità' : 'Margine disponibile';
-    icDeltaIco.textContent  = d < 0 ? '↑' : '↓';
-    icDelta.className = 'icard ' + (d < 0 ? 'danger-b' : d < currentLimit * 0.12 ? 'warn-b' : 'ok-b');
-  } else {
-    dpTxt.textContent   = 'Nessun limite';
-    dpDot.className     = 'dp-dot';
-    icDeltaVal.textContent = '–';
-    icDeltaLbl.textContent = 'Margine';
-    icDelta.className   = 'icard';
-  }
-
-  // beep logic — fires once on the crossing moment, not continuously
-  if (over && beepEnabled && !isOverLimit) {
-    isOverLimit = true;
-    triggerBeepOnce();   // single shot on crossing
-  } else if (!over && isOverLimit) {
-    isOverLimit = false; // reset so next crossing fires again
-  }
-}
-
-// ══════════════════
-//  SIGN UPDATE
-// ══════════════════
-function updateSign(limit) {
-  if (limit === currentLimit) return;
-  currentLimit = limit;
-
-  if (limit === null) {
-    signOuter.className = 'sign-outer empty';
-    signOuter.innerHTML = `<svg class="sign-empty-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-      <circle cx="12" cy="12" r="10"/><line x1="6" y1="6" x2="18" y2="18"/></svg>`;
-    annTxt.textContent = 'Nessun limite rilevato';
-    annTxt.className   = 'ann';
-    icLimitVal.textContent = '– km/h';
-    icLimit.className  = 'icard';
-    isOverLimit = false; stopBeepLoop(); alertRing.classList.remove('on');
-  } else {
-    signOuter.className = 'sign-outer pop glow';
-    signOuter.innerHTML = `<span class="sign-num">${limit}</span><span class="sign-kmh">km/h</span>`;
-    setTimeout(() => signOuter.classList.remove('glow','pop'), 1500);
-    annTxt.textContent = `Limite di velocità a ${limit} km/h`;
-    annTxt.className   = 'ann lit';
-    icLimitVal.textContent = `${limit} km/h`;
-    icLimit.className  = 'icard ok-b';
-    // Re-evaluate speed state against new limit (visual only, no double-speak)
-    const _over = currentSpeed > limit;
-    spdArc.className = 'spd-fill' + (_over ? ' danger' : (currentSpeed >= limit*0.88 ? ' warn' : ''));
-    spdNum.className = 'spd-num'  + (_over ? ' danger' : (currentSpeed >= limit*0.88 ? ' warn' : ''));
-    alertRing.classList.toggle('on', _over);
-    speak(`Limite di velocità a ${limit} chilometri orari`);
-  }
-}
-
-// ══════════════════
-//  VOICE ENGINE
-// ══════════════════
-function setVBadge(name) { vbadge.textContent = name; }
-
-async function speakEL(text) {
-  const key = window._elKeyOverride || EL_KEY;
-  if (!key) throw new Error('no key');
-  const r = await fetch(`https://api.elevenlabs.io/v1/text-to-speech/${EL_VOICE}/stream`, {
-    method:'POST',
-    headers:{ 'xi-api-key':key, 'Content-Type':'application/json' },
-    body: JSON.stringify({ text, model_id:'eleven_multilingual_v2',
-      voice_settings:{ stability:0.45, similarity_boost:0.82, style:0.35, use_speaker_boost:true }})
-  });
-  if (!r.ok) throw new Error('EL error');
-  return await r.blob();
-}
-
-// ── VOICE: selects best MALE Italian voice, single execution path ──
-function bestMaleItVoice() {
-  const vv = window.speechSynthesis?.getVoices() || [];
-  // Priority: explicit male Italian voices first, then any Italian
-  const tests = [
-    v => v.name.includes('Luca')     && v.lang.startsWith('it'),
-    v => v.name.includes('Diego')    && v.lang.startsWith('it'),
-    v => v.name.includes('Giorgio')  && v.lang.startsWith('it'),
-    v => v.name.includes('Google')   && v.lang === 'it-IT',
-    v => v.lang === 'it-IT',
-    v => v.lang.startsWith('it'),
-  ];
-  for (const t of tests) { const f = vv.find(t); if(f) return f; }
-  return null;
-}
-
-// Single authoritative speak function
-async function speak(text) {
-  if (isSpeaking) return;   // re-entry guard
-  isSpeaking = true;
-
-  // Safety release: if onend never fires (Android Chrome bug), unlock after 8s
-  const safetyTimer = setTimeout(() => { isSpeaking = false; voiceBars.classList.remove('on'); }, 8000);
-  const done = () => { clearTimeout(safetyTimer); voiceBars.classList.remove('on'); isSpeaking = false; };
-
-  // Stop anything already playing
-  if (currentAudio) { currentAudio.pause(); currentAudio = null; }
-  const ss = window.speechSynthesis;
-  if (ss) ss.cancel();
-
-  voiceBars.classList.add('on');
-
-  // ── Path A: ElevenLabs (only when API key is set) ──
-  if (EL_KEY || window._elKeyOverride) {
-    try {
-      const blob = await speakEL(text);
-      const url  = URL.createObjectURL(blob);
-      currentAudio = new Audio(url);
-      setVBadge('ElevenLabs Neural');
-      await new Promise((res, rej) => {
-        currentAudio.onended = res;
-        currentAudio.onerror = rej;
-        currentAudio.play().catch(rej);
-      });
-      URL.revokeObjectURL(url);
-      done(); return;
-    } catch(e) {
-      if (currentAudio) { currentAudio.pause(); currentAudio = null; }
+    var gen = parseSpeed(t.maxspeed);
+    var lf = parseSpeed(t['maxspeed:forward']), lb = parseSpeed(t['maxspeed:backward']);
+    if (lf == null) lf = gen;
+    if (lb == null) lb = gen;
+    var est = 0;
+    if (lf == null && lb == null) {
+      var hints = [t['maxspeed:type'], t['source:maxspeed'], t['zone:maxspeed'], t['zone:traffic']], d = null;
+      for (var k = 0; k < hints.length; k++) if (hints[k] && ZONE[hints[k]]) { d = ZONE[hints[k]]; break; }
+      if (d == null && HW_DEFAULT[t.highway]) d = HW_DEFAULT[t.highway];
+      if (d != null) { lf = lb = d; est = 1; }
     }
+    var o = String(t.oneway || '').toLowerCase(), ow = 0;
+    if (o === 'yes' || o === 'true' || o === '1') ow = 1;
+    else if (o === '-1' || o === 'reverse') ow = -1;
+    else if (o !== 'no' && (t.junction === 'roundabout' || t.junction === 'circular' || t.highway === 'motorway' || t.highway === 'motorway_link')) ow = 1;
+    return { id: el.id, n: el.nodes.slice(), g: g, lf: lf, lb: lb, est: est, ow: ow, nm: t.name || '', rf: t.ref || '', hw: t.highway || '' };
   }
 
-  // ── Path B: Web Speech API ──
-  if (!ss) { done(); return; }
+  var ways = new Map(), tiles = new Map(), refs = new Map(), endNodes = new Map(), grid = new Map();
+  var cur = null, pend = null, pendN = 0, pendFix = null, latch = null, initN = 0, initFix = null, initAcc = new Map();
 
-  // Android Chrome workaround: Web Speech pauses after ~15s unless periodically resumed
-  ss.cancel();
-  await new Promise(res => setTimeout(res, 80)); // brief pause after cancel
-
-  await new Promise(res => {
-    const u = new SpeechSynthesisUtterance(text);
-    u.lang   = 'it-IT';
-    u.rate   = 0.87;
-    u.pitch  = 0.9;
-    u.volume = 1.0;
-    const voice = bestMaleItVoice();
-    if (voice) { u.voice = voice; setVBadge(voice.name); }
-    u.onend   = res;
-    u.onerror = res;
-    // Android Chrome resume workaround
-    const resumeHack = setInterval(() => { if (ss.paused) ss.resume(); }, 200);
-    u.onend = () => { clearInterval(resumeHack); res(); };
-    u.onerror = () => { clearInterval(resumeHack); res(); };
-    ss.speak(u);
-  });
-
-  done();
-}
-
-// ══════════════════
-//  GPS
-// ══════════════════
-function switchToGPS() {
-  // Stop simulation if running
-  if (simRunning) {
-    clearInterval(simInterval); simRunning = false; simVal = 0;
-    document.getElementById('simSpeedBtn').textContent = '▶ Velocità';
+  function addEnd(node, id) {
+    var a = endNodes.get(node);
+    if (!a) { a = []; endNodes.set(node, a); }
+    if (a.indexOf(id) < 0) a.push(id);
   }
-  // Reset state
-  currentLimit = null; isOverLimit = false;
-  updateSign(null); updateSpeed(0);
-  // Hide demo bar, show permission overlay again so user can confirm GPS
-  document.getElementById('demoBar').style.display = 'none';
-  permEl.style.display = 'flex';
-}
-
-function requestGPS() {
-  permEl.style.display='none';
-  gpsDot.className='gps-dot searching'; gpsVal.textContent='Ricerca…';
-  if (!navigator.geolocation) { gpsVal.textContent='Non supportato'; return; }
-  watchId = navigator.geolocation.watchPosition(onPos, onGpsErr,
-    { enableHighAccuracy:true, maximumAge:2000, timeout:10000 });
-}
-
-let lastLat = null, lastLon = null;
-
-function haversineM(la1,lo1,la2,lo2) {
-  const R=6371000, dLat=(la2-la1)*Math.PI/180, dLon=(lo2-lo1)*Math.PI/180;
-  const a=Math.sin(dLat/2)**2+Math.cos(la1*Math.PI/180)*Math.cos(la2*Math.PI/180)*Math.sin(dLon/2)**2;
-  return R*2*Math.atan2(Math.sqrt(a),Math.sqrt(1-a));
-}
-
-function onPos(pos) {
-  gpsDot.className='gps-dot'; gpsVal.textContent='Attivo';
-  const {latitude:lat,longitude:lon,speed,accuracy:acc} = pos.coords;
-  coordsTxt.textContent = `${lat.toFixed(5)}° N  |  ${lon.toFixed(5)}° E`;
-  gpsAccTxt.textContent = `Precisione: ±${Math.round(acc)} m`;
-  updateSpeed(speed !== null ? speed*3.6 : currentSpeed);
-
-  const now = Date.now();
-  // Fetch if: 8s elapsed OR moved more than 25m since last fetch
-  const movedFar = lastLat !== null && haversineM(lastLat,lastLon,lat,lon) > 15;
-  if (movedFar || now - lastLimitCheck > 3000) {
-    lastLimitCheck = now; lastLat = lat; lastLon = lon;
-    fetchLimit(lat, lon);
-  }
-}
-function onGpsErr() { gpsDot.className='gps-dot error'; gpsVal.textContent='Errore'; }
-
-// ── Overpass query: finds the road the car is ON (not just nearby)
-// Strategy: search within 20m, pick the way with the HIGHEST node count
-// (most nodes = most detailed = the road we're driving on, not a side street)
-// Also always re-evaluate even if same limit — road may have changed.
-let fetchInFlight = false;
-
-async function fetchLimit(lat, lon) {
-  if (fetchInFlight) return;   // don't stack concurrent requests
-  fetchInFlight = true;
-
-  // Query: get all ways within 25m that have any highway tag,
-  // then also get ways with maxspeed within 60m as fallback.
-  // We use geom so we can compute distance to each way's nodes.
-  const q = `[out:json][timeout:8];
-(
-  way(around:25,${lat},${lon})[highway][maxspeed];
-  way(around:60,${lat},${lon})[highway][maxspeed];
-);
-out tags geom;`;
-
-  try {
-    const ctrl = new AbortController();
-    const timer = setTimeout(() => ctrl.abort(), 9000);
-    const r = await fetch(
-      'https://overpass-api.de/api/interpreter?data=' + encodeURIComponent(q),
-      { signal: ctrl.signal }
-    );
-    clearTimeout(timer);
-    if (!r.ok) { fetchInFlight = false; return; }
-    const d = await r.json();
-
-    if (!d.elements || d.elements.length === 0) {
-      // No road with explicit maxspeed found — don't clear existing sign
-      fetchInFlight = false; return;
-    }
-
-    // Pick the best matching way:
-    // 1. Prefer ways where our position is closest to any node
-    // 2. Among ties, prefer ways with more nodes (main road vs side street)
-    let bestWay = null, bestDist = Infinity;
-    for (const way of d.elements) {
-      if (!way.geometry || !way.tags?.maxspeed) continue;
-      // Find minimum distance from our position to any node of this way
-      let minD = Infinity;
-      for (const node of way.geometry) {
-        const d = haversineM(lat, lon, node.lat, node.lon);
-        if (d < minD) minD = d;
-      }
-      // Weight: closer wins; if equidistant, more nodes wins
-      const score = minD - (way.geometry.length * 0.5);
-      if (score < bestDist) { bestDist = score; bestWay = way; }
-    }
-
-    if (bestWay) {
-      const lim = parseMaxspeed(bestWay.tags.maxspeed);
-      if (lim !== null) {
-        // Force update even if same number — position changed, road may differ
-        if (lim !== currentLimit) updateSign(lim);
+  function indexWay(w) {
+    var g = w.g, segs = g.length / 2 - 1;
+    for (var s = 0; s < segs && s < MAXSEG; s++) {
+      var la1 = g[2 * s], lo1 = g[2 * s + 1], la2 = g[2 * s + 2], lo2 = g[2 * s + 3];
+      var steps = Math.max(1, Math.ceil(Math.max(Math.abs(la2 - la1), Math.abs(lo2 - lo1)) / (CELL * 0.4)));
+      var last = '';
+      for (var k = 0; k <= steps; k++) {
+        var f = k / steps;
+        var key = Math.floor((la1 + (la2 - la1) * f) / CELL) + ':' + Math.floor((lo1 + (lo2 - lo1) * f) / CELL);
+        if (key === last) continue;
+        last = key;
+        var a = grid.get(key);
+        if (!a) { a = []; grid.set(key, a); }
+        a.push(w.id * MAXSEG + s);
       }
     }
-  } catch(e) {
-    // Overpass timeout or network error — silently ignore, keep current sign
+    addEnd(w.n[0], w.id);
+    addEnd(w.n[w.n.length - 1], w.id);
   }
-  fetchInFlight = false;
-}
+  function rebuild() { grid = new Map(); endNodes = new Map(); ways.forEach(function (w) { indexWay(w); }); }
 
-function parseMaxspeed(raw) {
-  if (!raw) return null;
-  // Italian and common European road type tags
-  const m = {
-    'IT:urban': 50, 'IT:rural': 90, 'IT:motorway': 130,
-    'IT:living_street': 10, 'IT:zone30': 30,
-    'DE:urban': 50, 'FR:urban': 50, 'walk': 10, 'none': null
+  function addTile(key, list) {
+    if (tiles.has(key)) return;
+    var ids = [];
+    for (var i = 0; i < list.length; i++) {
+      var w = list[i];
+      if (!w || !w.g || w.g.length < 4) continue;
+      ids.push(w.id);
+      var r = refs.get(w.id) || 0;
+      refs.set(w.id, r + 1);
+      if (r === 0) { ways.set(w.id, w); indexWay(w); }
+    }
+    tiles.set(key, ids);
+  }
+  function removeTiles(keys) {
+    var changed = false;
+    keys.forEach(function (key) {
+      var ids = tiles.get(key);
+      if (!ids) return;
+      tiles.delete(key);
+      ids.forEach(function (id) {
+        var r = (refs.get(id) || 1) - 1;
+        if (r <= 0) { refs.delete(id); ways.delete(id); changed = true; } else refs.set(id, r);
+      });
+    });
+    if (changed) rebuild();
+  }
+  function reset() { cur = null; pend = null; pendN = 0; pendFix = null; latch = null; initN = 0; initFix = null; initAcc.clear(); }
+  function clear() { ways.clear(); tiles.clear(); refs.clear(); rebuild(); reset(); }
+  function tileKey(lat, lon) { return Math.floor(lat / TS) + '_' + Math.floor(lon / TS); }
+
+  function connected(a, b) {
+    var wa = ways.get(a), wb = ways.get(b);
+    if (!wa || !wb) return false;
+    var set = new Set(wa.n);
+    for (var i = 0; i < wb.n.length; i++) if (set.has(wb.n[i])) return true;
+    return false;
+  }
+  function cumLen(w) {
+    if (w._c) return w._c;
+    var g = w.g, n = g.length / 2, c = new Array(n);
+    c[0] = 0;
+    for (var i = 1; i < n; i++) c[i] = c[i - 1] + dist(g[2 * i - 2], g[2 * i - 1], g[2 * i], g[2 * i + 1]);
+    w._c = c;
+    return c;
+  }
+  function remaining(w, s, t, fwd) {
+    var c = cumLen(w), pos = c[s] + t * (c[s + 1] - c[s]);
+    return fwd ? c[c.length - 1] - pos : pos;
+  }
+  // tratto successivo sulla stessa strada (stesso nome o numero), proseguendo quasi diritti
+  function continuation(w, fwd) {
+    var g = w.g, n = w.n, L = g.length;
+    if (n.length < 2 || n[0] === n[n.length - 1]) return null;
+    var end = fwd ? n[n.length - 1] : n[0];
+    var eb = fwd ? bearing(g[L - 4], g[L - 3], g[L - 2], g[L - 1]) : bearing(g[2], g[3], g[0], g[1]);
+    var ids = endNodes.get(end);
+    if (!ids) return null;
+    var res = null, bestTurn = 40;
+    for (var i = 0; i < ids.length; i++) {
+      if (ids[i] === w.id) continue;
+      var nw = ways.get(ids[i]);
+      if (!nw) continue;
+      var ng = nw.g, NL = ng.length, nf, nb;
+      if (nw.n[0] === end) { if (nw.ow === -1) continue; nf = true; nb = bearing(ng[0], ng[1], ng[2], ng[3]); }
+      else if (nw.n[nw.n.length - 1] === end) { if (nw.ow === 1) continue; nf = false; nb = bearing(ng[NL - 2], ng[NL - 1], ng[NL - 4], ng[NL - 3]); }
+      else continue;
+      if ((w.nm || w.rf) && !((w.nm && nw.nm === w.nm) || (w.rf && nw.rf === w.rf))) continue;
+      var turn = angDiff(eb, nb);
+      if (turn <= bestTurn) { bestTurn = turn; res = { w: nw, fwd: nf }; }
+    }
+    return res;
+  }
+  function label(w) {
+    if (w.rf && w.nm) return w.rf + ' · ' + w.nm;
+    return w.nm || w.rf || HW_NAME[w.hw] || 'Strada';
+  }
+
+  // fix: {lat, lon, acc (m), speed (m/s), heading (gradi o null)}
+  function update(fix, opts) {
+    opts = opts || {};
+    var useEst = opts.estimate !== false;
+    var lat = fix.lat, lon = fix.lon;
+    var acc = (typeof fix.acc === 'number' && isFinite(fix.acc)) ? fix.acc : 20;
+    var radius = Math.min(60, Math.max(25, acc * 1.5));
+    var spd = fix.speed || 0;
+    var H = (fix.heading != null && isFinite(fix.heading) && spd > 2.5) ? fix.heading : null;
+    var kx = Math.cos(lat * D2R) * 111320, ky = 110574;
+    var ci = Math.floor(lat / CELL), cj = Math.floor(lon / CELL);
+    var seen = new Set(), best = new Map();
+
+    function evalSeg(w, s, maxR) {
+      var g = w.g;
+      var ax = (g[2 * s + 1] - lon) * kx, ay = (g[2 * s] - lat) * ky;
+      var bx = (g[2 * s + 3] - lon) * kx, by = (g[2 * s + 2] - lat) * ky;
+      var vx = bx - ax, vy = by - ay, L2 = vx * vx + vy * vy;
+      var t = L2 > 0 ? -(ax * vx + ay * vy) / L2 : 0;
+      var tc = t < 0 ? 0 : (t > 1 ? 1 : t);
+      var px = ax + tc * vx, py = ay + tc * vy;
+      var d = Math.sqrt(px * px + py * py);
+      if (d > maxR) return;
+      var score = d, fwd;
+      if (H != null && L2 > 0.25) {
+        var segB = (Math.atan2(vx, vy) / D2R + 360) % 360;
+        var diff = angDiff(H, segB), align;
+        if (w.ow === 1) { fwd = true; align = diff; }
+        else if (w.ow === -1) { fwd = false; align = 180 - diff; }
+        else { fwd = diff <= 90; align = fwd ? diff : 180 - diff; }
+        score += align * 0.35;
+        if (w.ow !== 0 && align > 100) score += 60;      // carreggiata opposta / contromano
+      } else if (cur && cur.id === w.id) fwd = cur.fwd;
+      else fwd = w.ow !== -1;
+      var nseg = g.length / 2 - 1;
+      if ((s === 0 && t < -0.02) || (s === nseg - 1 && t > 1.02)) score += 12;  // oltre la fine del tratto
+      var b = best.get(w.id);
+      if (!b || score < b.score) best.set(w.id, { id: w.id, score: score, d: d, s: s, t: tc, fwd: fwd });
+    }
+
+    for (var di = -1; di <= 1; di++) {
+      for (var dj = -1; dj <= 1; dj++) {
+        var arr = grid.get((ci + di) + ':' + (cj + dj));
+        if (!arr) continue;
+        for (var q = 0; q < arr.length; q++) {
+          var code = arr[q];
+          if (seen.has(code)) continue;
+          seen.add(code);
+          var id = Math.floor(code / MAXSEG);
+          var w = ways.get(id);
+          if (w) evalSeg(w, code - id * MAXSEG, radius);
+        }
+      }
+    }
+    // la strada su cui si sta già viaggiando resta sempre in gara (fino a 60 m):
+    // un singolo punto GPS sbagliato non può farla scartare
+    if (cur && !best.has(cur.id) && ways.has(cur.id)) {
+      var wc = ways.get(cur.id), nsc = wc.g.length / 2 - 1;
+      for (var sc = 0; sc < nsc; sc++) evalSeg(wc, sc, 60);
+    }
+
+    if (best.size === 0) {
+      latch = null;
+      return { status: tiles.has(tileKey(lat, lon)) ? 'noroad' : 'nodata' };
+    }
+
+    var top = null, second = null;
+    best.forEach(function (b) {
+      if (!top || b.score < top.score) { second = top; top = b; }
+      else if (!second || b.score < second.score) second = b;
+    });
+
+    // primo aggancio: se due strade sono quasi alla pari, somma i punteggi di 3 posizioni
+    // e sceglie la strada più coerente (evita di agganciare per errore la parallela)
+    if (!cur) {
+      if (fix === initFix) return { status: 'pending' };   // stessa posizione rivalutata: non conta due volte
+      initFix = fix;
+      initN++;
+      // una strada assente in una posizione conta come molto lontana (60 m) in quella posizione
+      initAcc.forEach(function (v, k) { if (!best.has(k)) initAcc.set(k, v + 60); });
+      best.forEach(function (b) { initAcc.set(b.id, (initAcc.has(b.id) ? initAcc.get(b.id) : 60 * (initN - 1)) + b.score); });
+      var m = null, m2 = null;
+      best.forEach(function (b) {
+        var a = initAcc.get(b.id);
+        if (!m || a < initAcc.get(m.id)) { m2 = m; m = b; }
+        else if (!m2 || a < initAcc.get(m2.id)) m2 = b;
+      });
+      var close = m2 && initAcc.get(m2.id) - initAcc.get(m.id) < 8 * initN;
+      if (initN < 2 || (close && initN < 3)) return { status: 'pending' };
+      top = m;
+      initN = 0;
+      initAcc.clear();
+    }
+
+    var chosen = top;
+    var c = cur ? best.get(cur.id) : null;
+    if (c && c.id !== top.id) {
+      var ev = c.score - top.score;
+      if (ev <= HYST) { chosen = c; pend = null; pendN = 0; }
+      else if (c.d < 45 && !connected(c.id, top.id)) {
+        // un'auto non può saltare su una strada parallela non collegata:
+        // si cambia solo se l'evidenza è netta e ripetuta (errore GPS altrimenti)
+        if (ev > 8) {
+          if (pend === top.id) { if (fix !== pendFix) pendN++; } else { pend = top.id; pendN = 1; }
+          pendFix = fix;
+        } else { pend = null; pendN = 0; }
+        if (pendN < (ev > 40 ? 2 : (c.d > 25 ? 5 : 8))) chosen = c; else { pend = null; pendN = 0; }
+      } else { pend = null; pendN = 0; }
+    } else { pend = null; pendN = 0; }
+
+    if (!cur || cur.id !== chosen.id || cur.fwd !== chosen.fwd) latch = null;
+    cur = { id: chosen.id, fwd: chosen.fwd };
+    var w0 = ways.get(chosen.id);
+    var lim = chosen.fwd ? w0.lf : w0.lb, est = !!w0.est;
+    if (lim != null && est && !useEst) lim = null;
+
+    if (!latch && H != null && spd > 4 && remaining(w0, chosen.s, chosen.t, chosen.fwd) < spd * LOOKAHEAD_S) {
+      var nx = continuation(w0, chosen.fwd);
+      if (nx) latch = nx;
+    }
+    var upcoming = false;
+    if (latch) {
+      var nl = latch.fwd ? latch.w.lf : latch.w.lb;
+      if (nl != null && (useEst || !latch.w.est)) { lim = nl; est = !!latch.w.est; upcoming = true; }
+    }
+    return { status: 'ok', limit: lim, est: lim != null && est, label: label(w0), wayId: w0.id, dist: chosen.d, upcoming: upcoming };
+  }
+
+  return {
+    TS: TS, dist: dist, bearing: bearing, angDiff: angDiff, parseSpeed: parseSpeed, compactWay: compactWay,
+    addTile: addTile, removeTiles: removeTiles, clear: clear, reset: reset, tileKey: tileKey,
+    hasTile: function (k) { return tiles.has(k); },
+    stats: function () { return { ways: ways.size, tiles: tiles.size }; },
+    update: update
   };
-  if (raw in m) return m[raw];
-  // Handle "50 mph" etc. → convert to km/h
-  if (raw.toLowerCase().includes('mph')) {
-    const n = parseInt(raw, 10);
-    return (!isNaN(n) && n > 0) ? Math.round(n * 1.60934) : null;
+})();
+</script>
+
+<!-- ==========================================================
+     APPLICAZIONE
+     ========================================================== -->
+<script>
+(function () {
+'use strict';
+const $ = id => document.getElementById(id);
+const PHRASE = v => 'Limite di velocità a ' + v + ' chilometri orari';
+const GMAX = 200;
+const STD_LIMITS = [10, 20, 30, 40, 50, 60, 70, 80, 90, 100, 110, 120, 130];
+const OVERPASS = [
+  'https://overpass-api.de/api/interpreter',
+  'https://overpass.kumi.systems/api/interpreter',
+  'https://maps.mail.ru/osm/tools/overpass/api/interpreter',
+  'https://overpass.private.coffee/api/interpreter'
+];
+const HW = 'motorway|motorway_link|trunk|trunk_link|primary|primary_link|secondary|secondary_link|tertiary|tertiary_link|unclassified|residential|living_street|road';
+const EL_VOICES = [['pNInz6obpgDQGcFmaJgB', 'Adam'], ['onwK4e9ZLuTAKqWW03F9', 'Daniel'], ['JBFqnCBsd6RMkjVDRZzb', 'George'], ['nPczCjzI2devNBz1zQrb', 'Brian']];
+const MALE_RE = /(luca|diego|giuseppe|benigno|calimero|cataldo|gianni|lisandro|rinaldo|cosimo|giorgio|paolo|roberto|marco|\bmale\b|maschil|uomo|itd)/i;
+const isMale = v => MALE_RE.test((v.name || '') + ' ' + (v.voiceURI || ''));
+
+/* ===== Impostazioni ===== */
+const LS_KEY = 'speedguard.v3';
+function readLS() { try { return JSON.parse(localStorage.getItem(LS_KEY)) || {}; } catch (e) { return {}; } }
+const S = Object.assign({ beep: true, voice: true, estimate: true, voiceURI: '', elKey: '', elVoice: EL_VOICES[0][0] }, readLS());
+function saveS() { try { localStorage.setItem(LS_KEY, JSON.stringify(S)); } catch (e) {} }
+
+/* ===== Archivio locale (IndexedDB) ===== */
+const DB = {
+  p: null,
+  open() {
+    if (!this.p) this.p = new Promise(res => {
+      try {
+        const r = indexedDB.open('speedguard', 1);
+        r.onupgradeneeded = () => {
+          const d = r.result;
+          if (!d.objectStoreNames.contains('tiles')) d.createObjectStore('tiles');
+          if (!d.objectStoreNames.contains('audio')) d.createObjectStore('audio');
+        };
+        r.onsuccess = () => res(r.result);
+        r.onerror = () => res(null);
+        r.onblocked = () => res(null);
+      } catch (e) { res(null); }
+    });
+    return this.p;
+  },
+  async get(store, key) {
+    const d = await this.open();
+    if (!d) return null;
+    return new Promise(res => {
+      try { const q = d.transaction(store, 'readonly').objectStore(store).get(key); q.onsuccess = () => res(q.result || null); q.onerror = () => res(null); }
+      catch (e) { res(null); }
+    });
+  },
+  async put(store, key, val) {
+    const d = await this.open();
+    if (!d) return;
+    try { d.transaction(store, 'readwrite').objectStore(store).put(val, key); } catch (e) {}
+  },
+  async clear(store) {
+    const d = await this.open();
+    if (!d) return;
+    await new Promise(res => {
+      try { const tx = d.transaction(store, 'readwrite'); tx.objectStore(store).clear(); tx.oncomplete = res; tx.onerror = res; }
+      catch (e) { res(); }
+    });
   }
-  const n = parseInt(raw, 10);
-  return (!isNaN(n) && n > 0) ? n : null;
+};
+
+/* ===== Audio: segnale acustico ===== */
+let actx = null;
+function ensureAudio() {
+  if (!actx) {
+    const AC = window.AudioContext || window.webkitAudioContext;
+    if (AC) { try { actx = new AC(); } catch (e) { actx = null; } }
+  }
+  if (actx && actx.state !== 'running' && actx.resume) { try { actx.resume().catch(() => {}); } catch (e) {} }
+  return actx;
+}
+// va chiamata dentro un tocco dell'utente: sblocca audio e sintesi vocale per tutta la sessione
+function unlockAudio() {
+  const c = ensureAudio();
+  if (c) { try { const b = c.createBuffer(1, 1, 22050), s = c.createBufferSource(); s.buffer = b; s.connect(c.destination); s.start(0); } catch (e) {} }
+  if (window.speechSynthesis) {
+    try { speechSynthesis.cancel(); speechSynthesis.speak(new SpeechSynthesisUtterance('')); speechSynthesis.getVoices(); } catch (e) {}
+  }
+}
+function tone(t, freq, dur, vol) {
+  const c = actx;
+  if (!c) return;
+  try {
+    const o = c.createOscillator(), g = c.createGain();
+    o.type = 'sine';
+    o.frequency.value = freq;
+    g.gain.setValueAtTime(0.0001, t);
+    g.gain.exponentialRampToValueAtTime(vol, t + 0.012);
+    g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+    o.connect(g); g.connect(c.destination);
+    o.start(t); o.stop(t + dur + 0.02);
+  } catch (e) {}
+}
+function playPips(n) {
+  const c = ensureAudio();
+  if (!c) return;
+  const t = c.currentTime + 0.03;
+  for (let i = 0; i < n; i++) tone(t + i * 0.17, 1000, 0.12, 0.6);
+}
+// doppio bip, suonato UNA sola volta nel momento in cui si supera il limite
+function alarmBeep() { if (S.beep) playPips(2); }
+
+/* ===== Voce: un solo motore per annuncio, mai due voci insieme ===== */
+function itVoices() {
+  try { return (window.speechSynthesis ? speechSynthesis.getVoices() : []).filter(v => /^it([-_]|$)/i.test(v.lang || '')); }
+  catch (e) { return []; }
+}
+function pickVoice() {
+  const vs = itVoices();
+  if (!vs.length) return null;
+  if (S.voiceURI) { const f = vs.find(v => v.voiceURI === S.voiceURI); if (f) return f; }
+  return vs.find(v => isMale(v) && v.localService) || vs.find(isMale) || vs.find(v => v.localService) || vs[0];
+}
+const Voice = {
+  token: 0, cache: new Map(), src: null, ctrl: null, elStatus: 'off', prepToken: 0,
+  stop() {
+    this.token++;
+    if (this.ctrl) { try { this.ctrl.abort(); } catch (e) {} this.ctrl = null; }
+    if (this.src) { try { this.src.onended = null; this.src.stop(); } catch (e) {} this.src = null; }
+    if (window.speechSynthesis) { try { speechSynthesis.cancel(); } catch (e) {} }
+  },
+  async say(text, force, delay) {
+    if (!S.voice && !force) return;
+    this.stop();                       // interrompe qualunque annuncio precedente
+    const my = this.token;
+    bars(true);
+    const done = () => { if (my === this.token) bars(false); };
+    if (delay) { await new Promise(r => setTimeout(r, delay)); if (my !== this.token) return; }
+    // ponte nativo opzionale (app Android con WebView)
+    if (window.AndroidTTS && typeof window.AndroidTTS.speak === 'function') {
+      try { window.AndroidTTS.speak(text); } catch (e) {}
+      setTimeout(done, 3500);
+      return;
+    }
+    if (this.elStatus === 'ready' || this.elStatus === 'loading') {
+      let buf = this.cache.get(text) || null;
+      if (!buf && this.elStatus === 'ready') {
+        const ctrl = new AbortController();
+        this.ctrl = ctrl;
+        try { buf = await this.loadEL(text, 2500, ctrl); } catch (e) { buf = null; }
+        if (this.ctrl === ctrl) this.ctrl = null;
+      }
+      if (my !== this.token) return;   // nel frattempo è arrivato un annuncio più recente
+      if (buf) { this.cache.set(text, buf); this.play(buf, done); return; }
+    }
+    this.web(text, my, done);
+  },
+  play(buf, done) {
+    const c = ensureAudio();
+    if (!c) { done(); return; }
+    try {
+      const s = c.createBufferSource();
+      s.buffer = buf;
+      s.connect(c.destination);
+      s.onended = () => { if (this.src === s) this.src = null; done(); };
+      this.src = s;
+      s.start(0);
+    } catch (e) { done(); }
+  },
+  web(text, my, done) {
+    const ss = window.speechSynthesis;
+    if (!ss) { done(); return; }
+    setTimeout(() => {
+      if (my !== this.token) return;
+      try {
+        const u = new SpeechSynthesisUtterance(text);
+        u.lang = 'it-IT'; u.rate = 0.95; u.pitch = 1; u.volume = 1;
+        const v = pickVoice();
+        if (v) u.voice = v;
+        u.onend = done; u.onerror = done;
+        ss.speak(u);
+      } catch (e) { done(); }
+      setTimeout(done, 7000);
+    }, 70);
+  },
+  async loadEL(text, timeout, ctrl) {
+    const key = S.elVoice + '|' + text;
+    let ab = await DB.get('audio', key);
+    if (!ab) {
+      const tm = setTimeout(() => { try { ctrl.abort(); } catch (e) {} }, timeout);
+      try {
+        const r = await fetch('https://api.elevenlabs.io/v1/text-to-speech/' + encodeURIComponent(S.elVoice) + '?output_format=mp3_44100_128', {
+          method: 'POST',
+          headers: { 'xi-api-key': S.elKey, 'Content-Type': 'application/json', 'Accept': 'audio/mpeg' },
+          body: JSON.stringify({ text: text, model_id: 'eleven_multilingual_v2', voice_settings: { stability: 0.5, similarity_boost: 0.8 } }),
+          signal: ctrl.signal
+        });
+        if (r.status === 401 || r.status === 403) { const e = new Error('auth'); e.auth = true; throw e; }
+        if (!r.ok) throw new Error('HTTP ' + r.status);
+        ab = await r.arrayBuffer();
+      } finally { clearTimeout(tm); }
+      DB.put('audio', key, ab.slice(0));
+    }
+    const c = ensureAudio();
+    if (!c) return null;
+    return await c.decodeAudioData(ab.slice(0));
+  },
+  // scarica e tiene pronti in memoria tutti gli annunci standard: riproduzione istantanea
+  async prepare() {
+    const pt = ++this.prepToken;
+    this.cache.clear();
+    if (!S.elKey) { this.elStatus = 'off'; renderEl(); fillVoices(); return; }
+    this.elStatus = 'loading';
+    renderEl(0);
+    let ok = 0, auth = false;
+    for (const v of STD_LIMITS) {
+      if (pt !== this.prepToken) return;
+      const t = PHRASE(v);
+      try { const b = await this.loadEL(t, 20000, new AbortController()); if (b) { this.cache.set(t, b); ok++; } }
+      catch (e) { if (e && e.auth) { auth = true; break; } }
+      if (pt !== this.prepToken) return;
+      renderEl(ok);
+    }
+    this.elStatus = ok > 0 && !auth ? 'ready' : 'error';
+    renderEl(ok);
+    fillVoices();
+  }
+};
+
+/* ===== Interfaccia ===== */
+const ui = {
+  speed: $('speed'), gFill: $('gFill'), gLimit: $('gLimit'), sign: $('sign'), signNum: $('signNum'),
+  road: $('road'), src: $('src'), deltaLbl: $('deltaLbl'), deltaVal: $('deltaVal'), vbars: $('vbars')
+};
+function bars(on) { ui.vbars.classList.toggle('on', !!on); }
+function polar(a, r) { const t = a * Math.PI / 180; return [100 + r * Math.sin(t), 100 - r * Math.cos(t)]; }
+function arcPath(r) {
+  const p1 = polar(-135, r), p2 = polar(135, r);
+  return 'M' + p1[0].toFixed(2) + ' ' + p1[1].toFixed(2) + ' A' + r + ' ' + r + ' 0 1 1 ' + p2[0].toFixed(2) + ' ' + p2[1].toFixed(2);
+}
+function buildGauge() {
+  $('gTrack').setAttribute('d', arcPath(86));
+  $('gFill').setAttribute('d', arcPath(86));
+  let h = '';
+  for (let v = 0; v <= GMAX; v += 10) {
+    const a = -135 + 270 * v / GMAX, maj = v % 20 === 0;
+    const p1 = polar(a, maj ? 71 : 74), p2 = polar(a, 79);
+    h += '<line class="g-tick' + (maj ? ' maj' : '') + '" x1="' + p1[0].toFixed(2) + '" y1="' + p1[1].toFixed(2) + '" x2="' + p2[0].toFixed(2) + '" y2="' + p2[1].toFixed(2) + '"/>';
+    if (maj) { const l = polar(a, 62); h += '<text class="g-lbl" x="' + l[0].toFixed(2) + '" y="' + l[1].toFixed(2) + '">' + v + '</text>'; }
+  }
+  $('gTicks').innerHTML = h;
+}
+const BAR = { ok: 'var(--ok)', wait: 'var(--warn)', err: 'var(--danger)', idle: 'rgba(255,255,255,.35)' };
+function setCard(id, state, val, sub) {
+  const el = $(id);
+  el.style.setProperty('--bar', BAR[state] || BAR.idle);
+  el.querySelector('.dot').className = 'dot ' + state;
+  el.querySelector('.c-val').textContent = val;
+  el.querySelector('.c-sub').textContent = sub || ' ';
+}
+function setGps(state, val, sub) { setCard('cGps', state, val, sub); }
+let toastT = null;
+function toast(msg) {
+  const t = $('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  clearTimeout(toastT);
+  toastT = setTimeout(() => t.classList.remove('show'), 4500);
 }
 
-// ══════════════════
-//  DEMO
-// ══════════════════
-function startDemo() {
-  permEl.style.display='none';
-  document.getElementById('demoBar').style.display='flex';
-  gpsDot.className='gps-dot'; gpsVal.textContent='Demo';
-  gpsAccTxt.textContent='GPS simulato';
-  coordsTxt.textContent='41.12345° N  |  16.86789° E';
-  annTxt.textContent='Modalità demo — usa i pulsanti';
-  updateSpeed(0);
-  setTimeout(()=>{ const v=bestMaleItVoice(); setVBadge(v?v.name:'Web Speech'); },700);
+/* ===== Stato: limite, velocità, allarme ===== */
+const st = { mode: null, speed: 0, limit: null, est: false, over: false, lastAnn: null, unknownSince: 0 };
+
+function srcText(o, est) { return o.note || (est ? 'Limite di legge per questo tipo di strada' : 'Limite dai dati della mappa'); }
+function showSign(v, o, est) {
+  ui.sign.className = 'sign' + (v >= 100 ? ' three' : '');
+  ui.signNum.textContent = v;
+  void ui.sign.offsetWidth;
+  ui.sign.classList.add('pop');
+  ui.src.className = 'src' + (est ? ' est' : '');
+  ui.src.textContent = srcText(o, est);
 }
-function simulateLimit(l) { updateSign(l); }
-function toggleSimSpeed() {
-  const b=document.getElementById('simSpeedBtn');
-  if (simRunning) {
-    clearInterval(simInterval); simRunning=false; simVal=0; updateSpeed(0); b.textContent='▶ Velocità';
+function showEmpty(text) {
+  ui.sign.className = 'sign unknown';
+  ui.signNum.textContent = '–';
+  ui.src.className = 'src';
+  ui.src.textContent = text || 'Limite non disponibile';
+}
+function renderGaugeLimit() {
+  if (st.limit == null) { ui.gLimit.style.opacity = 0; return; }
+  const a = -135 + 270 * Math.min(st.limit, GMAX) / GMAX;
+  ui.gLimit.style.transform = 'rotate(' + a + 'deg)';
+  ui.gLimit.style.opacity = 1;
+}
+// unico punto in cui cambia il limite: la voce parla SOLO quando il valore cambia davvero
+function applyLimit(v, o) {
+  o = o || {};
+  const est = v != null && !!o.est;
+  ui.road.textContent = o.label || ' ';
+  if (v === st.limit && est === st.est) {
+    if (v == null) showEmpty(o.empty); else ui.src.textContent = srcText(o, est);
+    return;
+  }
+  st.limit = v;
+  st.est = est;
+  const now = Date.now();
+  renderGaugeLimit();
+  if (v == null) {
+    if (!st.unknownSince) st.unknownSince = now;
+    showEmpty(o.empty);
+    evalOver();
   } else {
-    simRunning=true; b.textContent='■ Stop';
-    simInterval = setInterval(()=>{
-      simVal += simDir*(Math.random()*4.2);
-      if (simVal>148) simDir=-1;
-      if (simVal<0)   { simVal=0; simDir=1; }
-      updateSpeed(simVal);
-    }, 270);
+    showSign(v, o, est);
+    const longGap = st.unknownSince && (now - st.unknownSince > 20000);
+    st.unknownSince = 0;
+    const beeped = evalOver();
+    // se nello stesso istante scatta anche l'allarme, la voce parte subito dopo il bip
+    if (v !== st.lastAnn || longGap) { st.lastAnn = v; Voice.say(PHRASE(v), false, beeped ? 450 : 0); }
   }
 }
-function applyKeyAndGPS()  { const k=document.getElementById('elKey')?.value?.trim(); if(k) window._elKeyOverride=k; requestGPS(); }
-function applyKeyAndDemo() { const k=document.getElementById('elKey')?.value?.trim(); if(k) window._elKeyOverride=k; startDemo(); }
-
-// ── INIT ──
-if (window.speechSynthesis) {
-  speechSynthesis.onvoiceschanged = ()=>{ const v=bestMaleItVoice(); if(v) setVBadge(v.name); };
-  speechSynthesis.getVoices();
+function setSpeed(kmh) {
+  st.speed = kmh;
+  if (kmh == null) {
+    ui.speed.textContent = '–';
+    ui.gFill.style.strokeDasharray = '0 100';
+    ui.gFill.style.opacity = 0;
+  } else {
+    const r = Math.round(kmh);
+    ui.speed.textContent = r;
+    ui.gFill.style.strokeDasharray = (Math.min(r, GMAX) / GMAX * 100).toFixed(2) + ' 100';
+    ui.gFill.style.opacity = r > 0 ? 1 : 0;
+  }
+  evalOver();
 }
+function evalOver() {
+  const v = st.limit, s = st.speed;
+  let state = 'ok', beeped = false;
+  if (v != null && s != null) {
+    const r = Math.round(s);
+    if (!st.over && r > v) { st.over = true; beeped = S.beep; alarmBeep(); }   // superamento: un solo bip
+    else if (st.over && r <= v - 2) st.over = false;                  // si riarma solo sotto il limite
+    if (r > v) state = 'danger'; else if (r >= v - 4) state = 'warn';
+    const d = v - r;
+    ui.deltaLbl.textContent = d < 0 ? 'Eccesso di velocità' : 'Margine';
+    ui.deltaVal.textContent = Math.abs(d) + ' km/h';
+  } else {
+    st.over = false;
+    ui.deltaLbl.textContent = 'Margine';
+    ui.deltaVal.textContent = '—';
+  }
+  document.body.dataset.state = state;
+  document.body.classList.toggle('over', state === 'danger');
+  return beeped;
+}
+
+/* ===== Aree della mappa: scaricate in anticipo e salvate sul dispositivo ===== */
+const Tiles = {
+  loaded: new Set(), pending: new Set(), failUntil: new Map(), queue: [], busy: false, ep: 0, netErr: false,
+  ensure(lat, lon, hdg) {
+    const TS = Engine.TS, i = Math.floor(lat / TS), j = Math.floor(lon / TS), now = Date.now();
+    const jobs = [];
+    for (let di = -1; di <= 1; di++) {
+      for (let dj = -1; dj <= 1; dj++) {
+        const k = (i + di) + '_' + (j + dj);
+        if (this.loaded.has(k) || this.pending.has(k) || (this.failUntil.get(k) || 0) > now) continue;
+        let pri = 0;
+        if (di || dj) {
+          pri = 1.5;
+          if (hdg != null) pri = 1 + Engine.angDiff(hdg, Engine.bearing(lat, lon, (i + di + 0.5) * TS, (j + dj + 0.5) * TS)) / 180;
+        }
+        jobs.push({ k: k, i: i + di, j: j + dj, pri: pri });
+      }
+    }
+    jobs.sort((a, b) => a.pri - b.pri);
+    jobs.forEach(job => { this.pending.add(job.k); this.fromCache(job); });
+    this.prune(i, j);
+  },
+  async fromCache(job) {
+    const rec = await DB.get('tiles', job.k);
+    if (rec && Array.isArray(rec.w) && Date.now() - rec.t < 14 * 864e5) this.add(job.k, rec.w);
+    else { this.queue.push(job); this.queue.sort((a, b) => a.pri - b.pri); this.pump(); }
+  },
+  add(k, w) {
+    Engine.addTile(k, w);
+    this.loaded.add(k);
+    this.pending.delete(k);
+    runMatch();
+    renderData();
+  },
+  async pump() {
+    if (this.busy) return;
+    const job = this.queue.shift();
+    if (!job) { renderData(); return; }
+    this.busy = true;
+    renderData();
+    try {
+      const w = await this.download(job);
+      DB.put('tiles', job.k, { t: Date.now(), w: w });
+      this.netErr = false;
+      this.add(job.k, w);
+    } catch (e) {
+      this.pending.delete(job.k);
+      this.failUntil.set(job.k, Date.now() + 15000);
+      this.netErr = true;
+    }
+    this.busy = false;
+    renderData();
+    this.pump();
+  },
+  async download(job) {
+    const TS = Engine.TS;
+    const s = (job.i * TS).toFixed(4), w = (job.j * TS).toFixed(4), n = ((job.i + 1) * TS).toFixed(4), e = ((job.j + 1) * TS).toFixed(4);
+    const q = '[out:json][timeout:25];way["highway"~"^(' + HW + ')$"](' + s + ',' + w + ',' + n + ',' + e + ');out body geom qt;';
+    let lastErr = null;
+    for (let a = 0; a < OVERPASS.length; a++) {
+      const idx = (this.ep + a) % OVERPASS.length;
+      const ctrl = new AbortController();
+      const tm = setTimeout(() => ctrl.abort(), 20000);
+      try {
+        const r = await fetch(OVERPASS[idx], { method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, body: 'data=' + encodeURIComponent(q), signal: ctrl.signal });
+        if (!r.ok) throw new Error('HTTP ' + r.status);
+        const j = await r.json();
+        if (!j || !Array.isArray(j.elements)) throw new Error('risposta non valida');
+        if (j.remark && /runtime error|timed out|out of memory/i.test(j.remark)) throw new Error(j.remark);
+        clearTimeout(tm);
+        this.ep = idx;
+        const out = [];
+        for (const el of j.elements) { const c = Engine.compactWay(el); if (c) out.push(c); }
+        return out;
+      } catch (err) { clearTimeout(tm); lastErr = err; }
+    }
+    throw lastErr || new Error('rete');
+  },
+  prune(i, j) {
+    const far = [];
+    this.loaded.forEach(k => {
+      const p = k.split('_');
+      if (Math.abs(+p[0] - i) > 2 || Math.abs(+p[1] - j) > 2) far.push(k);
+    });
+    if (far.length) { Engine.removeTiles(far); far.forEach(k => this.loaded.delete(k)); }
+  },
+  clear() {
+    Engine.clear();
+    this.loaded.clear();
+    this.failUntil.clear();
+  }
+};
+function renderData() {
+  if (st.mode !== 'gps') {
+    setCard('cData', 'idle', st.mode === 'demo' ? 'Non usati' : '—', st.mode === 'demo' ? 'Modalità demo' : '');
+    return;
+  }
+  const n = Engine.stats().ways;
+  if (lastFix && Engine.hasTile(Engine.tileKey(lastFix.lat, lastFix.lon))) setCard('cData', 'ok', 'Pronti', n.toLocaleString('it-IT') + ' tratti di strada in memoria');
+  else if (Tiles.netErr && !Tiles.busy) setCard('cData', 'err', 'Rete assente', 'Nuovo tentativo a breve');
+  else if (lastFix) setCard('cData', 'wait', 'Download in corso…', 'Strade della zona attuale');
+  else setCard('cData', 'idle', 'In attesa del GPS', '');
+}
+
+/* ===== GPS ===== */
+let watchId = null, prevFix = null, lastFix = null, lastFixT = 0, lastOkT = 0, emaSpd = null, lastHeading = null;
+function startGPS() {
+  stopGPS();
+  if (!('geolocation' in navigator)) { setGps('err', 'Non disponibile', 'Il dispositivo non fornisce la posizione'); return; }
+  if (window.isSecureContext === false) toast('Per usare il GPS apri l’app da un indirizzo https://');
+  setGps('wait', 'Ricerca segnale…', 'Attendi l’aggancio dei satelliti');
+  watchId = navigator.geolocation.watchPosition(onFix, onGpsErr, { enableHighAccuracy: true, maximumAge: 0, timeout: 15000 });
+  try {
+    if (navigator.permissions && navigator.permissions.query) {
+      navigator.permissions.query({ name: 'geolocation' }).then(p => { if (p.state === 'denied') onGpsErr({ code: 1 }); }).catch(() => {});
+    }
+  } catch (e) {}
+}
+function stopGPS() {
+  if (watchId != null) { try { navigator.geolocation.clearWatch(watchId); } catch (e) {} watchId = null; }
+}
+function onGpsErr(e) {
+  if (st.mode !== 'gps') return;
+  if (e && e.code === 1) {
+    setGps('err', 'Permesso negato', 'Consenti l’accesso alla posizione');
+    toast('Accesso alla posizione negato: abilitalo nelle impostazioni del browser o dell’app');
+  } else if (Date.now() - lastFixT > 5000) {
+    setGps('wait', 'Segnale assente', 'In attesa del GPS…');
+  }
+}
+function onFix(p) {
+  if (st.mode !== 'gps') return;
+  const c = p.coords, now = Date.now(), t = p.timestamp || now;
+  const lat = c.latitude, lon = c.longitude, acc = c.accuracy;
+  let spd = (typeof c.speed === 'number' && isFinite(c.speed) && c.speed >= 0) ? c.speed : null;
+  const fromGps = spd !== null;
+  let hdg = (typeof c.heading === 'number' && isFinite(c.heading)) ? c.heading : null;
+  if (prevFix) {
+    const dt = (t - prevFix.t) / 1000;
+    if (dt <= 0) return;   // posizione duplicata
+    const d = Engine.dist(prevFix.lat, prevFix.lon, lat, lon);
+    if (!fromGps && dt < 10 && acc < 60) spd = d / dt;          // velocità calcolata se il GPS non la fornisce
+    if (d > 4 && (hdg === null || (spd !== null && spd < 3))) hdg = Engine.bearing(prevFix.lat, prevFix.lon, lat, lon);
+  }
+  if (spd !== null) emaSpd = fromGps ? spd : (emaSpd == null ? spd : emaSpd * 0.4 + spd * 0.6);
+  const ms = emaSpd == null ? 0 : emaSpd;
+  if (ms > 2.5 && hdg !== null) lastHeading = hdg;
+  prevFix = { lat: lat, lon: lon, t: t };
+  lastFixT = now;
+  ui.speed.classList.remove('stale');
+  setSpeed(ms * 3.6 < 2 ? 0 : ms * 3.6);
+  const accTxt = 'Precisione ±' + Math.round(acc) + ' m';
+  if (acc > 30) setGps('wait', 'Segnale debole', accTxt); else setGps('ok', 'Agganciato', accTxt);
+  lastFix = { lat: lat, lon: lon, acc: acc, speed: ms, heading: ms > 2.5 ? (hdg != null ? hdg : lastHeading) : null };
+  Tiles.ensure(lat, lon, lastFix.heading);
+  runMatch();
+  renderData();
+}
+// ricalcola il limite a ogni posizione: tutto in locale, nessuna attesa di rete
+function runMatch() {
+  if (st.mode !== 'gps' || !lastFix) return;
+  if (lastFix.acc > 80) return;   // posizione troppo imprecisa per scegliere la strada
+  const r = Engine.update(lastFix, { estimate: S.estimate });
+  const now = Date.now();
+  if (r.status === 'ok') {
+    lastOkT = now;
+    if (r.limit != null) applyLimit(r.limit, { est: r.est, label: r.label });
+    else applyLimit(null, { label: r.label, empty: 'Limite non presente sui dati della mappa' });
+  } else if (r.status === 'pending') {
+    if (st.limit == null) applyLimit(null, { label: '', empty: 'Riconoscimento della strada…' });
+  } else if (st.limit == null || now - lastOkT > 8000) {
+    applyLimit(null, { label: '', empty: r.status === 'nodata' ? 'Caricamento dati stradali…' : 'Nessuna strada rilevata' });
+  }
+}
+
+/* ===== Demo ===== */
+let autoT = null, autoTarget = 0, autoV = 0;
+function markDemoSel(btn) { document.querySelectorAll('[data-lim]').forEach(b => b.classList.toggle('sel', b === btn)); }
+function setSimSpeed(v) { $('simRange').value = Math.round(v); $('simVal').textContent = Math.round(v); setSpeed(v); }
+function pickTarget() { const base = st.limit != null ? st.limit : 70; autoTarget = Math.max(0, Math.min(160, base + (Math.random() * 30 - 15))); }
+function startAuto() {
+  stopAuto();
+  autoV = +$('simRange').value;
+  pickTarget();
+  autoT = setInterval(() => {
+    const d = autoTarget - autoV;
+    if (Math.abs(d) < 1) pickTarget();
+    autoV += Math.sign(d) * Math.min(Math.abs(d), 1.6);
+    setSimSpeed(autoV);
+  }, 200);
+  $('btnAuto').textContent = '■ Stop';
+}
+function stopAuto() {
+  if (autoT) { clearInterval(autoT); autoT = null; }
+  $('btnAuto').textContent = '▶ Simula';
+}
+document.querySelectorAll('[data-lim]').forEach(b => b.addEventListener('click', () => {
+  if (st.mode !== 'demo') return;
+  markDemoSel(b);
+  if (b.dataset.lim === '') applyLimit(null, { label: 'Strada dimostrativa', empty: 'Nessun limite impostato' });
+  else applyLimit(+b.dataset.lim, { label: 'Strada dimostrativa', note: 'Simulazione' });
+}));
+$('simRange').addEventListener('input', e => { stopAuto(); setSimSpeed(+e.target.value); });
+$('btnAuto').addEventListener('click', () => { ensureAudio(); if (autoT) stopAuto(); else startAuto(); });
+$('btnToGps').addEventListener('click', () => { unlockAudio(); setMode('gps'); });
+
+/* ===== Modalità ===== */
+function setMode(m) {
+  st.mode = m;
+  document.body.classList.toggle('mode-demo', m === 'demo');
+  const chip = $('modeChip');
+  chip.textContent = m === 'gps' ? 'GPS' : 'DEMO';
+  chip.className = 'chip ' + m;
+  Voice.stop();
+  bars(false);
+  stopAuto();
+  st.limit = null; st.est = false; st.over = false; st.lastAnn = null; st.unknownSince = 0;
+  prevFix = null; lastFix = null; lastFixT = 0; lastOkT = 0; emaSpd = null; lastHeading = null;
+  Engine.reset();
+  renderGaugeLimit();
+  markDemoSel(null);
+  ui.speed.classList.remove('stale');
+  if (m === 'gps') {
+    setSpeed(0);
+    applyLimit(null, { label: '', empty: 'In attesa del segnale GPS…' });
+    startGPS();
+  } else {
+    stopGPS();
+    setGps('idle', 'Simulato', 'Modalità demo');
+    setSimSpeed(0);
+    applyLimit(null, { label: 'Strada dimostrativa', empty: 'Scegli un limite qui sotto' });
+  }
+  renderData();
+  renderModeBtns();
+}
+
+/* ===== Schermo sempre acceso e schermo intero ===== */
+let wakeLock = null;
+async function keepAwake() {
+  try {
+    if ('wakeLock' in navigator && !wakeLock && document.visibilityState === 'visible') {
+      wakeLock = await navigator.wakeLock.request('screen');
+      wakeLock.addEventListener('release', () => { wakeLock = null; });
+    }
+  } catch (e) {}
+}
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState === 'visible') { keepAwake(); if (actx) ensureAudio(); }
+});
+function goFullscreen() {
+  try {
+    const el = document.documentElement;
+    if (document.fullscreenElement || !el.requestFullscreen) return;
+    el.requestFullscreen({ navigationUI: 'hide' }).then(() => {
+      try { if (screen.orientation && screen.orientation.lock) screen.orientation.lock('landscape').catch(() => {}); } catch (e) {}
+    }).catch(() => {});
+  } catch (e) {}
+}
+
+/* ===== Pulsanti principali ===== */
+function renderToggles() {
+  $('btnBeep').classList.toggle('on', S.beep);
+  $('beepVal').textContent = S.beep ? 'Attivo' : 'Disattivato';
+  $('btnVoice').classList.toggle('on', S.voice);
+  $('voiceVal').textContent = S.voice ? 'Attivi' : 'Disattivati';
+}
+$('btnBeep').addEventListener('click', () => {
+  S.beep = !S.beep; saveS(); renderToggles();
+  if (S.beep) playPips(1);   // conferma che l'audio funziona
+});
+$('btnVoice').addEventListener('click', () => {
+  S.voice = !S.voice; saveS(); renderToggles();
+  if (!S.voice) { Voice.stop(); bars(false); }
+});
+function start(mode) {
+  unlockAudio();
+  keepAwake();
+  goFullscreen();
+  $('startOv').classList.remove('show');
+  if (S.elKey && Voice.elStatus === 'off') Voice.prepare();
+  setMode(mode);
+}
+$('btnStartGps').addEventListener('click', () => start('gps'));
+$('btnStartDemo').addEventListener('click', () => start('demo'));
+
+/* ===== Impostazioni ===== */
+function fillVoices() {
+  const sel = $('voiceSel'), vs = itVoices(), auto = pickVoice();
+  sel.innerHTML = '';
+  const o0 = document.createElement('option');
+  o0.value = '';
+  o0.textContent = 'Automatica (preferisce una voce maschile)';
+  sel.appendChild(o0);
+  vs.forEach(v => {
+    const o = document.createElement('option');
+    o.value = v.voiceURI;
+    o.textContent = v.name + (isMale(v) ? '  ♂' : '');
+    sel.appendChild(o);
+  });
+  sel.value = S.voiceURI;
+  if (sel.value !== S.voiceURI) sel.value = '';
+  const elName = (EL_VOICES.find(x => x[0] === S.elVoice) || ['', 'ElevenLabs'])[1];
+  $('voiceNow').textContent = Voice.elStatus === 'ready'
+    ? 'In uso: ElevenLabs · ' + elName
+    : 'In uso: ' + (auto ? auto.name : 'voce italiana predefinita del sistema');
+}
+function fillElVoices() {
+  const sel = $('elVoice');
+  sel.innerHTML = '';
+  EL_VOICES.forEach(v => { const o = document.createElement('option'); o.value = v[0]; o.textContent = 'Voce maschile · ' + v[1]; sel.appendChild(o); });
+  sel.value = S.elVoice;
+}
+function renderEl(n) {
+  const el = $('elStatus'), s = Voice.elStatus;
+  el.textContent = s === 'off' ? 'Non attiva: si usa la voce del dispositivo'
+    : s === 'loading' ? 'Preparazione voce… ' + (n || 0) + '/' + STD_LIMITS.length
+    : s === 'ready' ? 'Pronta ✓ — usata per tutti gli annunci'
+    : 'Chiave non valida o rete assente: si usa la voce del dispositivo';
+  el.style.color = s === 'ready' ? 'var(--ok)' : s === 'error' ? 'var(--danger)' : '#fff';
+}
+function renderEst() { $('btnEst').classList.toggle('on', S.estimate); }
+function renderModeBtns() {
+  $('btnModeGps').classList.toggle('cur', st.mode === 'gps');
+  $('btnModeDemo').classList.toggle('cur', st.mode === 'demo');
+}
+function openSet() {
+  fillVoices(); fillElVoices(); renderEl(); renderEst(); renderModeBtns();
+  $('elKey').value = S.elKey;
+  $('setOv').classList.add('show');
+}
+function closeSet() { $('setOv').classList.remove('show'); }
+$('btnSettings').addEventListener('click', openSet);
+$('btnCloseSet').addEventListener('click', closeSet);
+$('voiceSel').addEventListener('change', e => { S.voiceURI = e.target.value; saveS(); fillVoices(); });
+$('btnTestVoice').addEventListener('click', () => { unlockAudio(); Voice.say(PHRASE(50), true); });
+$('btnElSave').addEventListener('click', () => {
+  S.elKey = $('elKey').value.trim();
+  S.elVoice = $('elVoice').value;
+  saveS();
+  unlockAudio();
+  Voice.prepare();
+});
+$('btnEst').addEventListener('click', () => { S.estimate = !S.estimate; saveS(); renderEst(); runMatch(); });
+$('btnClearMap').addEventListener('click', async () => {
+  await DB.clear('tiles');
+  Tiles.clear();
+  toast('Dati mappa cancellati');
+  if (st.mode === 'gps' && lastFix) Tiles.ensure(lastFix.lat, lastFix.lon, lastFix.heading);
+  renderData();
+});
+$('btnModeGps').addEventListener('click', () => { unlockAudio(); closeSet(); setMode('gps'); });
+$('btnModeDemo').addEventListener('click', () => { unlockAudio(); closeSet(); setMode('demo'); });
+
+/* ===== Orologio e controllo del segnale ===== */
+function tick() {
+  const d = new Date();
+  $('clock').textContent = String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0');
+  if (st.mode === 'gps') {
+    if (lastFixT && Date.now() - lastFixT > 5000) {
+      ui.speed.classList.add('stale');
+      setGps('wait', 'Segnale assente', 'Ultima posizione ' + Math.round((Date.now() - lastFixT) / 1000) + ' s fa');
+    }
+    renderData();
+  }
+}
+
+/* ===== Avvio ===== */
+buildGauge();
+renderToggles();
+renderEst();
+fillElVoices();
+fillVoices();
+renderEl();
+if (window.speechSynthesis && speechSynthesis.addEventListener) speechSynthesis.addEventListener('voiceschanged', fillVoices);
+setGps('idle', '—', 'Premi «Avvia con GPS»');
+renderData();
+setSpeed(0);
+applyLimit(null, { empty: 'In attesa di avvio' });
+tick();
+setInterval(tick, 1000);
+keepAwake();
+DB.open();
+})();
 </script>
 </body>
 </html>
