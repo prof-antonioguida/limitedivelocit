@@ -8,7 +8,8 @@
 <title>SpeedGuard</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Barlow:wght@500;600;700&family=Barlow+Semi+Condensed:wght@600;700&display=swap" rel="stylesheet">
+<!-- caratteri caricati senza bloccare l'app: senza internet si usano quelli del sistema -->
+<link href="https://fonts.googleapis.com/css2?family=Barlow:wght@500;600;700&family=Barlow+Semi+Condensed:wght@600;700&display=swap" rel="stylesheet" media="print" onload="this.media='all'">
 <style>
 /* ==========================================================
    SpeedGuard — schermo infotainment 10,25" in formato 21:9
@@ -22,6 +23,7 @@
   --u:min(1vw,2.35vh);
   --state:var(--ok);
 }
+@supports not (width:min(1px,2px)){:root{--u:1vw}}
 body[data-state="warn"]{--state:var(--warn)}
 body[data-state="danger"]{--state:var(--danger)}
 *{box-sizing:border-box;margin:0;padding:0}
@@ -84,6 +86,8 @@ body[data-state="danger"] .speed{color:var(--danger)}
 .road{font-size:calc(var(--u)*1.45);font-weight:700;text-align:center;max-width:100%;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .src{font-size:calc(var(--u)*.95);font-weight:600;letter-spacing:.04em;padding:calc(var(--u)*.35) calc(var(--u)*1);border-radius:999px;border:1px solid var(--line);background:var(--card);max-width:100%;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .src.est{color:var(--warn);border-color:rgba(255,197,61,.55)}
+.src.bad{color:#fff;background:rgba(255,59,85,.22);border-color:rgba(255,59,85,.8);white-space:normal;text-align:center;line-height:1.3}
+.src.est{white-space:normal;text-align:center;line-height:1.3}
 
 /* ---------- schede a destra ---------- */
 .cards{display:flex;flex-direction:column;gap:calc(var(--u)*.75);width:100%}
@@ -164,6 +168,15 @@ body.over .alert{opacity:1;animation:pulse 1s ease-in-out infinite}
 
 .toast{position:fixed;left:50%;bottom:calc(var(--u)*1.6);transform:translate(-50%,250%);z-index:200;max-width:80vw;background:#1b2431;border:1px solid var(--line);border-radius:calc(var(--u)*.8);padding:calc(var(--u)*.8) calc(var(--u)*1.4);font-size:calc(var(--u)*1.1);font-weight:600;transition:transform .3s;text-align:center}
 .toast.show{transform:translate(-50%,0)}
+.chev{font-size:calc(var(--u)*2);font-weight:700;line-height:1;flex:none}
+button.card:active{transform:scale(.985)}
+.ver{font-size:calc(var(--u)*.85);font-weight:600;margin-top:calc(var(--u)*.8)}
+.diag{display:grid;grid-template-columns:auto 1fr;gap:calc(var(--u)*.45) calc(var(--u)*1.1);font-size:calc(var(--u)*.95);line-height:1.3}
+.diag .dk{font-weight:700;white-space:nowrap}
+.diag .dv{font-weight:500;word-break:break-word}
+.diag-state{font-size:calc(var(--u)*1.5);font-weight:700}
+.diag-state.ok{color:var(--ok)}.diag-state.wait{color:var(--warn)}.diag-state.err{color:var(--danger)}
+.help{padding-left:calc(var(--u)*1.4);display:flex;flex-direction:column;gap:calc(var(--u)*.6);font-size:calc(var(--u)*1.02);line-height:1.4;font-weight:500}
 
 @keyframes vb{from{transform:scaleY(.25)}to{transform:scaleY(1)}}
 @keyframes blink{0%,100%{opacity:1}50%{opacity:.25}}
@@ -180,6 +193,9 @@ body.over .alert{opacity:1;animation:pulse 1s ease-in-out infinite}
     <div class="spacer"></div>
     <div class="vbars" id="vbars" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i></div>
     <div class="clock num" id="clock">--:--</div>
+    <button class="iconbtn" id="btnFull" aria-label="Schermo intero">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3H5a2 2 0 0 0-2 2v3"/><path d="M21 8V5a2 2 0 0 0-2-2h-3"/><path d="M3 16v3a2 2 0 0 0 2 2h3"/><path d="M16 21h3a2 2 0 0 0 2-2v-3"/></svg>
+    </button>
     <button class="iconbtn" id="btnSettings" aria-label="Impostazioni">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
     </button>
@@ -213,10 +229,11 @@ body.over .alert{opacity:1;animation:pulse 1s ease-in-out infinite}
       <div class="card" id="cDelta">
         <div class="c-body"><div class="c-lbl" id="deltaLbl">Margine</div><div class="c-val num" id="deltaVal">—</div></div>
       </div>
-      <div class="card" id="cGps">
+      <button class="card" id="cGps" aria-label="Diagnostica GPS">
         <span class="dot"></span>
         <div class="c-body"><div class="c-lbl">GPS</div><div class="c-val">—</div><div class="c-sub">&nbsp;</div></div>
-      </div>
+        <span class="chev">›</span>
+      </button>
       <div class="card" id="cData">
         <span class="dot"></span>
         <div class="c-body"><div class="c-lbl">Dati stradali</div><div class="c-val">—</div><div class="c-sub">&nbsp;</div></div>
@@ -270,6 +287,22 @@ body.over .alert{opacity:1;animation:pulse 1s ease-in-out infinite}
       <button class="btn big" id="btnStartDemo">Modalità demo</button>
     </div>
     <p class="note">I limiti provengono dai dati di OpenStreetMap. Le zone già percorse restano salvate sul dispositivo e funzionano anche senza rete.</p>
+    <p class="note">Quando il browser chiede di conoscere la tua posizione, premi «Consenti».</p>
+    <div class="ver" id="verStart"></div>
+  </div>
+</div>
+
+<!-- Diagnostica GPS -->
+<div class="ov" id="gpsOv">
+  <div class="panel">
+    <div class="p-head">
+      <div class="p-title">Diagnostica GPS</div>
+      <div class="row"><button class="btn primary" id="btnGpsRetry">↻ Riprova</button><button class="btn" id="btnCloseGps">Chiudi</button></div>
+    </div>
+    <div class="p-grid">
+      <div class="p-sec"><div class="p-lbl">Stato</div><div class="diag-state" id="diagState">—</div><div class="diag" id="diagRows"></div></div>
+      <div class="p-sec"><div class="p-lbl">Cosa fare</div><ol class="help" id="diagHelp"></ol></div>
+    </div>
   </div>
 </div>
 
@@ -299,7 +332,7 @@ body.over .alert{opacity:1;animation:pulse 1s ease-in-out infinite}
       </div>
       <div class="p-sec">
         <div class="p-lbl">Modalità</div>
-        <div class="row"><button class="btn primary" id="btnModeGps">◎ GPS</button><button class="btn" id="btnModeDemo">Demo</button></div>
+        <div class="row"><button class="btn primary" id="btnModeGps">◎ GPS</button><button class="btn" id="btnModeDemo">Demo</button><button class="btn" id="btnSetDiag">Diagnostica GPS</button></div>
       </div>
     </div>
   </div>
@@ -631,6 +664,7 @@ var Engine = (function () {
 (function () {
 'use strict';
 const $ = id => document.getElementById(id);
+const APP_VERSION = '3.1 · 4 ottobre 2026';
 const PHRASE = v => 'Limite di velocità a ' + v + ' chilometri orari';
 const GMAX = 200;
 const STD_LIMITS = [10, 20, 30, 40, 50, 60, 70, 80, 90, 100, 110, 120, 130];
@@ -893,22 +927,30 @@ function toast(msg) {
 }
 
 /* ===== Stato: limite, velocità, allarme ===== */
-const st = { mode: null, speed: 0, limit: null, est: false, over: false, lastAnn: null, unknownSince: 0 };
+const st = { mode: null, speed: 0, limit: null, est: false, over: false, lastAnn: null, unknownSince: 0, note: '', emptyMsg: '' };
 
-function srcText(o, est) { return o.note || (est ? 'Limite di legge per questo tipo di strada' : 'Limite dai dati della mappa'); }
-function showSign(v, o, est) {
+function showSign(v) {
   ui.sign.className = 'sign' + (v >= 100 ? ' three' : '');
   ui.signNum.textContent = v;
   void ui.sign.offsetWidth;
   ui.sign.classList.add('pop');
-  ui.src.className = 'src' + (est ? ' est' : '');
-  ui.src.textContent = srcText(o, est);
 }
-function showEmpty(text) {
+function showEmpty() {
   ui.sign.className = 'sign unknown';
   ui.signNum.textContent = '–';
-  ui.src.className = 'src';
-  ui.src.textContent = text || 'Limite non disponibile';
+}
+// scritta sotto il segnale: i problemi del GPS hanno sempre la precedenza
+function renderSrc() {
+  const g = st.mode === 'gps' ? gpsStatus() : null;
+  let text, cls = '';
+  if (st.limit != null) {
+    if (g && g.sign) { text = g.sign; cls = g.level === 'err' ? 'bad' : 'est'; }
+    else if (st.note) text = st.note;
+    else { text = st.est ? 'Limite di legge per questo tipo di strada' : 'Limite dai dati della mappa'; if (st.est) cls = 'est'; }
+  } else if (g && g.sign) { text = g.sign; cls = g.level === 'err' ? 'bad' : 'est'; }
+  else text = st.emptyMsg || 'Limite non disponibile';
+  if (ui.src.textContent !== text) ui.src.textContent = text;
+  ui.src.className = 'src' + (cls ? ' ' + cls : '');
 }
 function renderGaugeLimit() {
   if (st.limit == null) { ui.gLimit.style.opacity = 0; return; }
@@ -921,20 +963,20 @@ function applyLimit(v, o) {
   o = o || {};
   const est = v != null && !!o.est;
   ui.road.textContent = o.label || ' ';
-  if (v === st.limit && est === st.est) {
-    if (v == null) showEmpty(o.empty); else ui.src.textContent = srcText(o, est);
-    return;
-  }
+  st.note = o.note || '';
+  st.emptyMsg = o.empty || '';
+  if (v === st.limit && est === st.est) { if (v == null) showEmpty(); renderSrc(); return; }
   st.limit = v;
   st.est = est;
   const now = Date.now();
   renderGaugeLimit();
+  renderSrc();
   if (v == null) {
     if (!st.unknownSince) st.unknownSince = now;
-    showEmpty(o.empty);
+    showEmpty();
     evalOver();
   } else {
-    showSign(v, o, est);
+    showSign(v);
     const longGap = st.unknownSince && (now - st.unknownSince > 20000);
     st.unknownSince = 0;
     const beeped = evalOver();
@@ -1082,63 +1124,168 @@ function renderData() {
 }
 
 /* ===== GPS ===== */
-let watchId = null, prevFix = null, lastFix = null, lastFixT = 0, lastOkT = 0, emaSpd = null, lastHeading = null;
-function startGPS() {
-  stopGPS();
-  if (!('geolocation' in navigator)) { setGps('err', 'Non disponibile', 'Il dispositivo non fornisce la posizione'); return; }
-  if (window.isSecureContext === false) toast('Per usare il GPS apri l’app da un indirizzo https://');
-  setGps('wait', 'Ricerca segnale…', 'Attendi l’aggancio dei satelliti');
-  watchId = navigator.geolocation.watchPosition(onFix, onGpsErr, { enableHighAccuracy: true, maximumAge: 0, timeout: 15000 });
+let prevFix = null, lastFix = null, lastFixT = 0, lastOkT = 0, emaSpd = null, lastHeading = null;
+const UA = navigator.userAgent || '';
+const IS_WEBVIEW = /; wv\)/.test(UA) || /Version\/[\d.]+ Chrome\//.test(UA);
+const G = { id: null, started: 0, watchStart: 0, perm: 'unknown', denied: false, fixes: 0, last: null, rawSpd: null,
+            err: null, errN: 0, restarts: 0, retryT: null, hiddenAt: 0, permObj: null };
+const PERM_TXT = { granted: 'Concessa', prompt: 'In attesa della tua conferma', denied: 'Negata', unknown: 'Non rilevabile da questo browser' };
+const ERR_TXT = { 0: 'Errore', 1: 'Permesso negato', 2: 'Posizione non disponibile', 3: 'Tempo scaduto (nessun satellite)' };
+
+// indirizzo non sicuro (http://): il browser non concede il GPS
+function isInsecure() {
+  if (window.isSecureContext === false) return true;
+  if (window.isSecureContext === true) return false;
+  const h = location.hostname;
+  return location.protocol === 'http:' && h !== 'localhost' && !/^127\./.test(h);
+}
+function gpsStart() {
+  gpsClear();
+  G.started = Date.now(); G.fixes = 0; G.last = null; G.rawSpd = null; G.err = null; G.errN = 0; G.restarts = 0; G.denied = false;
+  prevFix = null; lastFix = null; lastFixT = 0; emaSpd = null; lastHeading = null;
+  setSpeed(null);
+  if (!('geolocation' in navigator) || isInsecure()) { renderGps(); return; }
+  queryPerm();
+  gpsWatch(false);
+}
+function gpsWatch(isRestart) {
+  gpsClear();
+  if (isRestart) G.restarts++;
+  G.watchStart = Date.now();
   try {
-    if (navigator.permissions && navigator.permissions.query) {
-      navigator.permissions.query({ name: 'geolocation' }).then(p => { if (p.state === 'denied') onGpsErr({ code: 1 }); }).catch(() => {});
-    }
+    G.id = navigator.geolocation.watchPosition(onFix, onGpsErr, { enableHighAccuracy: true, maximumAge: 1000, timeout: 20000 });
+  } catch (e) { G.err = { code: 0, msg: String(e && e.message || e), t: Date.now() }; }
+  renderGps();
+}
+function gpsClear() {
+  clearTimeout(G.retryT);
+  if (G.id != null) { try { navigator.geolocation.clearWatch(G.id); } catch (e) {} G.id = null; }
+}
+function gpsStop() { gpsClear(); }
+function queryPerm() {
+  try {
+    if (!navigator.permissions || !navigator.permissions.query) return;
+    navigator.permissions.query({ name: 'geolocation' }).then(p => {
+      G.permObj = p;
+      G.perm = p.state;
+      p.onchange = () => {
+        G.perm = p.state;
+        if (st.mode === 'gps' && p.state === 'granted' && (G.denied || G.id == null)) { G.denied = false; G.err = null; gpsWatch(true); }
+        renderGps();
+      };
+      if (p.state === 'granted') prefetchKnown();
+      renderGps();
+    }).catch(() => {});
   } catch (e) {}
 }
-function stopGPS() {
-  if (watchId != null) { try { navigator.geolocation.clearWatch(watchId); } catch (e) {} watchId = null; }
+// ultima posizione nota (anche vecchia): serve solo a scaricare in anticipo le strade della zona
+function prefetchKnown() {
+  try {
+    navigator.geolocation.getCurrentPosition(p => {
+      if (st.mode === 'gps' && !G.fixes && p.coords.accuracy <= 3000) { Tiles.ensure(p.coords.latitude, p.coords.longitude, null); renderData(); }
+    }, () => {}, { enableHighAccuracy: false, maximumAge: 3600000, timeout: 10000 });
+  } catch (e) {}
 }
 function onGpsErr(e) {
   if (st.mode !== 'gps') return;
-  if (e && e.code === 1) {
-    setGps('err', 'Permesso negato', 'Consenti l’accesso alla posizione');
-    toast('Accesso alla posizione negato: abilitalo nelle impostazioni del browser o dell’app');
-  } else if (Date.now() - lastFixT > 5000) {
-    setGps('wait', 'Segnale assente', 'In attesa del GPS…');
+  const code = (e && e.code) || 0;
+  G.err = { code: code, msg: (e && e.message) || '', t: Date.now() };
+  G.errN++;
+  if (code === 1) {
+    if (!G.denied) toast('Accesso alla posizione negato: tocca la scheda GPS per vedere come consentirlo');
+    G.denied = true;
+    gpsClear();
+  } else if (code === 2) {
+    // localizzazione spenta o servizio non pronto: riprova da solo
+    clearTimeout(G.retryT);
+    G.retryT = setTimeout(() => { if (st.mode === 'gps' && !G.denied) gpsWatch(true); }, 5000);
   }
+  renderGps();
 }
 function onFix(p) {
   if (st.mode !== 'gps') return;
-  const c = p.coords, now = Date.now(), t = p.timestamp || now;
-  const lat = c.latitude, lon = c.longitude, acc = c.accuracy;
+  const c = p.coords, now = Date.now();
+  const lat = c.latitude, lon = c.longitude, acc = (typeof c.accuracy === 'number' && isFinite(c.accuracy)) ? c.accuracy : 50;
+  if (typeof lat !== 'number' || typeof lon !== 'number' || !isFinite(lat) || !isFinite(lon)) return;
+  // posizione ripetuta identica: ignorata
+  if (prevFix && p.timestamp && p.timestamp === prevFix.ts && lat === prevFix.lat && lon === prevFix.lon) return;
   let spd = (typeof c.speed === 'number' && isFinite(c.speed) && c.speed >= 0) ? c.speed : null;
   const fromGps = spd !== null;
   let hdg = (typeof c.heading === 'number' && isFinite(c.heading)) ? c.heading : null;
   if (prevFix) {
-    const dt = (t - prevFix.t) / 1000;
-    if (dt <= 0) return;   // posizione duplicata
+    // si usa l'orario della posizione se è coerente; altrimenti l'orologio dell'app
+    // (alcune autoradio forniscono orari GPS bloccati o sbagliati)
+    const dtRx = (now - prevFix.t) / 1000;
+    const dtTs = (p.timestamp && prevFix.ts) ? (p.timestamp - prevFix.ts) / 1000 : -1;
+    const dt = (dtTs > 0 && Math.abs(dtTs - dtRx) < 2) ? dtTs : dtRx;
     const d = Engine.dist(prevFix.lat, prevFix.lon, lat, lon);
-    if (!fromGps && dt < 10 && acc < 60) spd = d / dt;          // velocità calcolata se il GPS non la fornisce
+    if (!fromGps && dt >= 0.5 && dt < 10 && acc < 60) spd = d / dt;   // velocità calcolata se il GPS non la fornisce
     if (d > 4 && (hdg === null || (spd !== null && spd < 3))) hdg = Engine.bearing(prevFix.lat, prevFix.lon, lat, lon);
   }
   if (spd !== null) emaSpd = fromGps ? spd : (emaSpd == null ? spd : emaSpd * 0.4 + spd * 0.6);
   const ms = emaSpd == null ? 0 : emaSpd;
   if (ms > 2.5 && hdg !== null) lastHeading = hdg;
-  prevFix = { lat: lat, lon: lon, t: t };
+  prevFix = { lat: lat, lon: lon, t: now, ts: p.timestamp };
   lastFixT = now;
+  G.fixes++;
+  G.last = { lat: lat, lon: lon, acc: acc, t: now };
+  G.rawSpd = fromGps ? c.speed : null;
+  G.err = null;
   ui.speed.classList.remove('stale');
   setSpeed(ms * 3.6 < 2 ? 0 : ms * 3.6);
-  const accTxt = 'Precisione ±' + Math.round(acc) + ' m';
-  if (acc > 30) setGps('wait', 'Segnale debole', accTxt); else setGps('ok', 'Agganciato', accTxt);
   lastFix = { lat: lat, lon: lon, acc: acc, speed: ms, heading: ms > 2.5 ? (hdg != null ? hdg : lastHeading) : null };
-  Tiles.ensure(lat, lon, lastFix.heading);
+  if (acc <= 300) Tiles.ensure(lat, lon, lastFix.heading);
   runMatch();
   renderData();
+  renderGps();
+}
+// stato del GPS in parole semplici: usato dalla scheda GPS, dalla scritta sotto il segnale e dalla diagnostica
+function gpsStatus() {
+  const now = Date.now();
+  const R = (k, level, card, sign) => ({ k: k, level: level, card: card, sign: sign });
+  if (!('geolocation' in navigator)) return R('nogeo', 'err', ['err', 'Non disponibile', 'Tocca per l’aiuto'], 'Questo browser non fornisce la posizione: apri l’app con Google Chrome');
+  if (isInsecure()) return R('insecure', 'err', ['err', 'Indirizzo non sicuro', 'Serve un indirizzo https://'], 'Apri l’app dall’indirizzo https:// di GitHub Pages');
+  if (G.denied || G.perm === 'denied') return R('denied', 'err', ['err', 'Permesso negato', 'Tocca per vedere come consentirlo'], 'Accesso alla posizione negato: tocca la scheda GPS');
+  const age = G.fixes ? (now - lastFixT) / 1000 : null;
+  if (G.fixes && age < 6) {
+    const a = Math.round(G.last.acc);
+    if (a >= 500) return R('coarse', 'err', ['err', 'Solo approssimativa', '±' + a + ' m · tocca per l’aiuto'], 'Posizione solo approssimativa: attiva «Usa posizione precisa» per Chrome');
+    if (a > 100) return R('weak', 'wait', ['wait', 'Segnale debole', 'Precisione ±' + a + ' m'], 'Segnale GPS debole (±' + a + ' m): attendo una posizione più precisa');
+    return R('ok', 'ok', [a > 30 ? 'wait' : 'ok', 'Agganciato', 'Precisione ±' + a + ' m'], null);
+  }
+  if (G.fixes) return R('lost', 'wait', ['wait', 'Segnale perso', 'Ultima posizione ' + fmtSec(age) + ' fa'], 'Segnale GPS perso (galleria o parcheggio coperto?): riprende da solo');
+  if (G.err && G.err.code === 2) return R('unavail', 'err', ['err', 'Posizione non disponibile', 'Localizzazione spenta? Tocca per l’aiuto'], 'Posizione non disponibile: attiva la Localizzazione del dispositivo');
+  const el = (now - G.started) / 1000;
+  if (G.perm === 'prompt') return R('prompt', 'wait', ['wait', 'Serve la tua conferma', 'Premi «Consenti» nella richiesta del browser'], 'Premi «Consenti» nella richiesta di accesso alla posizione');
+  if (IS_WEBVIEW && el > 12) return R('webview', 'err', ['err', 'Nessuna risposta', 'Apri l’indirizzo con Chrome'], 'Il GPS non risponde dentro questa app: apri l’indirizzo con Google Chrome');
+  if (G.perm !== 'granted' && el > 15) return R('noreply', 'wait', ['wait', 'Nessuna risposta', 'Tocca per l’aiuto'], 'Il GPS non risponde: hai consentito l’accesso alla posizione? Tocca la scheda GPS');
+  return R('search', 'wait', ['wait', 'Ricerca satelliti… ' + fmtSec(el), el > 45 ? 'Tocca per i suggerimenti' : 'Il primo aggancio può richiedere qualche minuto'], 'Ricerca dei satelliti in corso… ' + fmtSec(el));
+}
+function fmtSec(s) {
+  s = Math.max(0, Math.round(s));
+  return s < 60 ? s + ' s' : Math.floor(s / 60) + ' min ' + (s % 60) + ' s';
+}
+function renderGps() {
+  if (st.mode === 'gps') {
+    const s = gpsStatus();
+    setGps(s.card[0], s.card[1], s.card[2]);
+  }
+  renderSrc();
+  if ($('gpsOv').classList.contains('show')) renderDiag();
+}
+// controllo ogni secondo: riavvia la richiesta se il GPS si è bloccato
+function gpsWatchdog(now) {
+  if (st.mode !== 'gps') return;
+  if (lastFixT && now - lastFixT > 5000) ui.speed.classList.add('stale');
+  if (G.id == null || G.denied || G.perm !== 'granted') return;
+  const sinceWatch = now - G.watchStart;
+  if (G.fixes && now - lastFixT > 30000 && sinceWatch > 30000) gpsWatch(true);
+  else if (!G.fixes && sinceWatch > 90000 && (!G.err || now - G.err.t > 60000)) gpsWatch(true);
 }
 // ricalcola il limite a ogni posizione: tutto in locale, nessuna attesa di rete
 function runMatch() {
   if (st.mode !== 'gps' || !lastFix) return;
-  if (lastFix.acc > 80) return;   // posizione troppo imprecisa per scegliere la strada
+  if (lastFix.acc > 100) { renderSrc(); return; }   // posizione troppo imprecisa per scegliere la strada
   const r = Engine.update(lastFix, { estimate: S.estimate });
   const now = Date.now();
   if (r.status === 'ok') {
@@ -1148,9 +1295,62 @@ function runMatch() {
   } else if (r.status === 'pending') {
     if (st.limit == null) applyLimit(null, { label: '', empty: 'Riconoscimento della strada…' });
   } else if (st.limit == null || now - lastOkT > 8000) {
-    applyLimit(null, { label: '', empty: r.status === 'nodata' ? 'Caricamento dati stradali…' : 'Nessuna strada rilevata' });
+    let msg = 'Nessuna strada rilevata qui';
+    if (r.status === 'nodata') msg = Tiles.netErr ? 'Strade della zona non scaricate: serve una connessione internet' : 'Caricamento delle strade della zona…';
+    applyLimit(null, { label: '', empty: msg });
   }
 }
+
+/* ===== Diagnostica GPS ===== */
+function browserName() {
+  const cv = (UA.match(/Chrome\/(\d+)/) || [])[1];
+  if (IS_WEBVIEW) return 'Pagina dentro un’altra app (WebView' + (cv ? ' ' + cv : '') + ')';
+  if (/SamsungBrowser\//.test(UA)) return 'Samsung Internet';
+  if (/EdgA?\//.test(UA)) return 'Microsoft Edge';
+  const fv = (UA.match(/Firefox\/(\d+)/) || [])[1];
+  if (fv) return 'Firefox ' + fv;
+  if (cv) return 'Google Chrome ' + cv;
+  return UA.slice(0, 70) || 'Sconosciuto';
+}
+const HELP = {
+  insecure: ['Apri l’app dall’indirizzo https:// di GitHub Pages (per esempio https://nomeutente.github.io/speedguard/).', 'Non aprire il file salvato sul dispositivo e non usare indirizzi che iniziano con http://.'],
+  nogeo: ['Apri l’indirizzo dell’app con Google Chrome.'],
+  webview: ['Stai aprendo l’app dentro un’altra app, che non passa il GPS alla pagina.', 'Apri l’indirizzo https:// dell’app direttamente con Google Chrome.'],
+  denied: ['In Chrome tocca l’icona a sinistra dell’indirizzo › Autorizzazioni (o Impostazioni sito) › Posizione › Consenti.', 'Nelle impostazioni Android: App › Chrome › Autorizzazioni › Posizione › «Consenti solo mentre l’app è in uso», e attiva «Usa posizione precisa».', 'Poi premi «Riprova».'],
+  prompt: ['Sullo schermo deve comparire la richiesta «… vuole conoscere la tua posizione»: premi «Consenti».', 'Se non la vedi, premi «Riprova»: la richiesta viene mostrata di nuovo.'],
+  noreply: ['Controlla di aver premuto «Consenti» quando il browser ha chiesto la posizione.', 'Nelle impostazioni Android: App › Chrome › Autorizzazioni › Posizione › consenti e attiva «Usa posizione precisa».', 'Controlla che la Localizzazione del dispositivo sia attiva, poi premi «Riprova».'],
+  coarse: ['Android sta dando a Chrome solo la posizione approssimativa (errore di chilometri).', 'Impostazioni Android › App › Chrome › Autorizzazioni › Posizione › attiva «Usa posizione precisa».', 'Poi premi «Riprova».'],
+  unavail: ['Attiva la Localizzazione: Impostazioni Android › Posizione (o Localizzazione) › attiva.', 'Se puoi scegliere la modalità, scegli «Alta precisione» o «Solo dispositivo / GPS».', 'Poi premi «Riprova».'],
+  search: ['Dopo l’accensione dell’autoradio il primo aggancio ai satelliti può richiedere da 1 a 5 minuti, di più se l’autoradio non ha internet.', 'Resta all’aperto: garage, gallerie e parcheggi coperti bloccano il segnale.', 'Prova con Google Maps sull’autoradio: se neanche lì il pallino blu si muove, il problema è il GPS dell’autoradio (antenna o impostazioni), non l’app.', 'Controlla che Chrome abbia il permesso di posizione con «Usa posizione precisa» attivo.'],
+  lost: ['In galleria, nei parcheggi coperti o tra palazzi alti il segnale si perde: riprende da solo appena il cielo è libero.'],
+  weak: ['Il segnale è debole: il limite si aggiorna appena la precisione migliora.', 'Se resta debole a lungo all’aperto, controlla l’antenna GPS dell’autoradio.'],
+  ok: ['Il GPS funziona correttamente.'],
+  demo: ['Sei in modalità demo e il GPS non è in uso: premi «Passa a GPS» nella barra in basso.']
+};
+function esc(t) { return String(t).replace(/[&<>"]/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[ch]); }
+function renderDiag() {
+  const now = Date.now(), s = st.mode === 'gps' ? gpsStatus() : null;
+  const L = G.last;
+  const rows = [
+    ['Versione app', APP_VERSION],
+    ['Indirizzo', (location.protocol === 'https:' ? location.host + location.pathname : location.href.slice(0, 60)) + (isInsecure() ? '  ✗ non sicuro' : '  ✓ sicuro')],
+    ['Browser', browserName()],
+    ['Accesso alla posizione', PERM_TXT[G.denied ? 'denied' : G.perm] || G.perm],
+    ['Richiesta GPS', st.mode !== 'gps' ? 'Ferma (modalità demo)' : (G.id == null ? 'Ferma' : 'Attiva da ' + fmtSec((now - G.started) / 1000)) + (G.restarts ? ' · riavvii: ' + G.restarts : '')],
+    ['Posizioni ricevute', String(G.fixes)],
+    ['Ultima posizione', L ? L.lat.toFixed(5) + ', ' + L.lon.toFixed(5) + ' · ±' + Math.round(L.acc) + ' m · ' + fmtSec((now - L.t) / 1000) + ' fa' : '—'],
+    ['Velocità dal GPS', G.rawSpd != null ? Math.round(G.rawSpd * 3.6) + ' km/h' : (G.fixes ? 'Non fornita (la calcola l’app)' : '—')],
+    ['Ultimo errore', G.err ? (ERR_TXT[G.err.code] || 'Errore ' + G.err.code) + (G.err.msg ? ' — ' + G.err.msg : '') + ' (' + fmtSec((now - G.err.t) / 1000) + ' fa)' : 'Nessuno'],
+    ['Strade in memoria', Engine.stats().ways.toLocaleString('it-IT') + (Tiles.netErr ? ' · download non riuscito (rete?)' : '')]
+  ];
+  $('diagRows').innerHTML = rows.map(r => '<div class="dk">' + esc(r[0]) + '</div><div class="dv">' + esc(r[1]) + '</div>').join('');
+  const key = s ? s.k : 'demo';
+  $('diagState').textContent = s ? s.card[1] : 'Modalità demo';
+  $('diagState').className = 'diag-state ' + (s ? s.card[0] : 'idle');
+  $('diagHelp').innerHTML = (HELP[key] || HELP.search).map(h => '<li>' + esc(h) + '</li>').join('');
+}
+function openDiag() { renderDiag(); $('gpsOv').classList.add('show'); }
+function closeDiag() { $('gpsOv').classList.remove('show'); }
 
 /* ===== Demo ===== */
 let autoT = null, autoTarget = 0, autoV = 0;
@@ -1200,11 +1400,10 @@ function setMode(m) {
   markDemoSel(null);
   ui.speed.classList.remove('stale');
   if (m === 'gps') {
-    setSpeed(0);
+    gpsStart();
     applyLimit(null, { label: '', empty: 'In attesa del segnale GPS…' });
-    startGPS();
   } else {
-    stopGPS();
+    gpsStop();
     setGps('idle', 'Simulato', 'Modalità demo');
     setSimSpeed(0);
     applyLimit(null, { label: 'Strada dimostrativa', empty: 'Scegli un limite qui sotto' });
@@ -1224,7 +1423,12 @@ async function keepAwake() {
   } catch (e) {}
 }
 document.addEventListener('visibilitychange', () => {
-  if (document.visibilityState === 'visible') { keepAwake(); if (actx) ensureAudio(); }
+  if (document.visibilityState === 'hidden') { G.hiddenAt = Date.now(); return; }
+  keepAwake();
+  if (actx) ensureAudio();
+  // al ritorno in primo piano Android può aver sospeso il GPS: si riavvia la richiesta
+  if (st.mode === 'gps' && G.hiddenAt && Date.now() - G.hiddenAt > 3000 && !G.denied && 'geolocation' in navigator && !isInsecure()) gpsWatch(true);
+  G.hiddenAt = 0;
 });
 function goFullscreen() {
   try {
@@ -1233,6 +1437,12 @@ function goFullscreen() {
     el.requestFullscreen({ navigationUI: 'hide' }).then(() => {
       try { if (screen.orientation && screen.orientation.lock) screen.orientation.lock('landscape').catch(() => {}); } catch (e) {}
     }).catch(() => {});
+  } catch (e) {}
+}
+function toggleFullscreen() {
+  try {
+    if (document.fullscreenElement) { if (document.exitFullscreen) document.exitFullscreen().catch(() => {}); }
+    else goFullscreen();
   } catch (e) {}
 }
 
@@ -1254,7 +1464,16 @@ $('btnVoice').addEventListener('click', () => {
 function start(mode) {
   unlockAudio();
   keepAwake();
-  goFullscreen();
+  // lo schermo intero può nascondere la richiesta di accesso alla posizione:
+  // in modalità GPS si attiva subito solo se l'accesso è già stato concesso
+  if (mode === 'demo') goFullscreen();
+  else {
+    try {
+      if (navigator.permissions && navigator.permissions.query) {
+        navigator.permissions.query({ name: 'geolocation' }).then(p => { if (p.state === 'granted') goFullscreen(); }).catch(() => {});
+      }
+    } catch (e) {}
+  }
   $('startOv').classList.remove('show');
   if (S.elKey && Voice.elStatus === 'off') Voice.prepare();
   setMode(mode);
@@ -1329,18 +1548,25 @@ $('btnClearMap').addEventListener('click', async () => {
 });
 $('btnModeGps').addEventListener('click', () => { unlockAudio(); closeSet(); setMode('gps'); });
 $('btnModeDemo').addEventListener('click', () => { unlockAudio(); closeSet(); setMode('demo'); });
+$('btnSetDiag').addEventListener('click', () => { closeSet(); openDiag(); });
+$('cGps').addEventListener('click', openDiag);
+$('btnCloseGps').addEventListener('click', closeDiag);
+$('btnGpsRetry').addEventListener('click', () => {
+  unlockAudio();
+  if (st.mode !== 'gps') setMode('gps'); else gpsStart();
+  renderDiag();
+});
+$('btnFull').addEventListener('click', toggleFullscreen);
 
 /* ===== Orologio e controllo del segnale ===== */
 function tick() {
   const d = new Date();
   $('clock').textContent = String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0');
   if (st.mode === 'gps') {
-    if (lastFixT && Date.now() - lastFixT > 5000) {
-      ui.speed.classList.add('stale');
-      setGps('wait', 'Segnale assente', 'Ultima posizione ' + Math.round((Date.now() - lastFixT) / 1000) + ' s fa');
-    }
+    gpsWatchdog(Date.now());
+    renderGps();
     renderData();
-  }
+  } else if ($('gpsOv').classList.contains('show')) renderDiag();
 }
 
 /* ===== Avvio ===== */
@@ -1354,6 +1580,7 @@ if (window.speechSynthesis && speechSynthesis.addEventListener) speechSynthesis.
 setGps('idle', '—', 'Premi «Avvia con GPS»');
 renderData();
 setSpeed(0);
+$('verStart').textContent = 'Versione ' + APP_VERSION;
 applyLimit(null, { empty: 'In attesa di avvio' });
 tick();
 setInterval(tick, 1000);
